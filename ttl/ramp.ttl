@@ -3,6 +3,7 @@
 @prefix epp: <http://lv2plug.in/ns/ext/port-props#>.
 @prefix foaf: <http://xmlns.com/foaf/0.1/>.
 @prefix mod: <http://moddevices.com/ns/modgui#>.
+@prefix pprop: <http://lv2plug.in/ns/ext/port-props#>.
 @prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
 @prefix units: <http://lv2plug.in/ns/extensions/units#>.
@@ -152,6 +153,7 @@ lv2:port
     lv2:minimum 1 ;
     lv2:maximum 300 ;
     ue:unit ue:bpm ;
+    lv2:portProperty pprop:notOnGUI ;
     lv2:designation <http://lv2plug.in/ns/ext/time#beatsPerMinute> ;
 ],
 [

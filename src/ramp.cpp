@@ -12,7 +12,9 @@ enum {IN, SIDECHAIN, OUT, ACTIVE, MODE, ENTER_THRESHOLD, LEAVE_THRESHOLD, PRE_SI
       SYNC_BPM, HOST_TEMPO, TEMPO, DIVISION, HALF_SPEED, DOUBLE_SPEED, ATTACK,
       SHAPE, DEPTH, VOLUME, OUT_TEST, PLUGIN_PORT_COUNT};
 
-enum {BYPASS, WAITING_THRESHOLD, FIRST_PERIOD, EFFECT, OUTING};
+enum {MUTE, BYPASS, WAITING_THRESHOLD, FIRST_PERIOD, EFFECT, OUTING};
+
+enum {MODE_ACTIVE_BP, MODE_ACTIVE_MUTE, MODE_IN_BP, MODE_IN_MUTE, MODE_SIDECHAIN_BP, MODE_SIDECHAIN_MUTE};
 /**********************************************************************************************************************************************************/
 
 class Ramp
@@ -58,20 +60,16 @@ public:
     float *volume;
     float *out_test;
     
-    
-    
+    double samplerate;
     int period_count;
     int period_length;
     int fade_in;
-    bool ex_active_state;
-    double samplerate;
-    bool next_is_active;
-    
     int default_fade;
     
+    bool ex_active_state;
+    bool next_is_active;
     uint32_t running_step;
     bool bypass_ordered;
-    
     float current_shape;
     float current_depth;
     float current_volume;
@@ -128,7 +126,7 @@ LV2_Handle Ramp::instantiate(const LV2_Descriptor* descriptor, double samplerate
 bool Ramp::mode_direct_active()
 {
     int plugin_mode = int(*mode);
-    if (plugin_mode == 0 or plugin_mode == 1){
+    if (plugin_mode == MODE_ACTIVE_BP or plugin_mode == MODE_ACTIVE_MUTE){
         return true;
     }
     
@@ -138,7 +136,7 @@ bool Ramp::mode_direct_active()
 bool Ramp::mode_threshold_in()
 {
     int plugin_mode = int(*mode);
-    if (plugin_mode == 2 or plugin_mode == 3){
+    if (plugin_mode == MODE_IN_BP or plugin_mode == MODE_IN_MUTE){
         return true;
     }
     
@@ -149,7 +147,7 @@ bool Ramp::mode_threshold_in()
 bool Ramp::mode_threshold_sidechain()
 {
     int plugin_mode = int(*mode);
-    if (plugin_mode == 4 or plugin_mode == 5){
+    if (plugin_mode == MODE_SIDECHAIN_BP or plugin_mode == MODE_SIDECHAIN_MUTE){
         return true;
     }
     
@@ -554,39 +552,6 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
                     }
                     
                     period_factor = plugin->get_fall_period_factor();
-//                     int n_max = (plugin->period_length - plugin->fade_in) / plugin->default_fade;
-//                     
-//                     float pre_factor = 1.00 - float(plugin->period_count - plugin->fade_in)
-//                                 / (float(plugin->period_length - plugin->fade_in));
-//                     float shape = plugin->current_shape;
-//                     
-//                     if (n_max < 1){
-//                         shape = 0.0f;
-//                     } else if (n_max < 2){
-//                         shape = float(shape/4);
-//                     } else if (n_max < 3){
-//                         shape = float(shape/2);
-//                     } else if (n_max < 4){
-//                         shape = float(shape*3/4);
-//                     }
-//                                 
-//                     if (plugin->current_shape > 0.0f){
-//                         while (shape > 1.0f){
-//                             pre_factor = sin(M_PI_2 * pre_factor);
-//                             shape -= 1.0f;
-//                         }
-//                         
-//                         period_factor = (sin(M_PI_2 * pre_factor) * shape) \
-//                                         + (pre_factor * (1 - shape));
-//                     } else {       
-//                         while (shape < -1.0f){
-//                             pre_factor = sin(M_PI_2 * (pre_factor -1)) +1; 
-//                             shape += 1.0f;
-//                         }
-//                         
-//                         period_factor = (sin(M_PI_2 * (pre_factor -1)) +1) * (-shape) \
-//                                         + pre_factor * (1 + shape);
-//                     }
                 }
                 break;
                 
