@@ -154,6 +154,18 @@ bool Ramp::mode_threshold_sidechain()
     return false;
 }
 
+bool mode_mute()
+{
+    int plugin_mode = int(*mode);
+    if (plugin_mode == MODE_ACTIVE_MUTE
+        or plugin_mode == MODE_IN_MUTE
+        or plugin_mode == MODE_SIDECHAIN_MUTE){
+            return true;
+    }
+    
+    return false;
+}
+
 
 void Ramp::enter_effect()
 {
@@ -528,11 +540,7 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
                     }
                 } else {
                     period_factor = plugin->get_fall_period_factor();
-                }
-                
-//                 if (plugin->period_count +1 == plugin->fade_in){
-//                     plugin->running_step = EFFECT;
-//                 }
+                } 
                 break;
                 
             case EFFECT:
