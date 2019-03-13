@@ -12,7 +12,7 @@ enum {IN, SIDECHAIN, OUT, ACTIVE, MODE, ENTER_THRESHOLD, LEAVE_THRESHOLD, PRE_SI
       SYNC_BPM, HOST_TEMPO, TEMPO, DIVISION, HALF_SPEED, DOUBLE_SPEED, ATTACK,
       SHAPE, DEPTH, VOLUME, OUT_TEST, PLUGIN_PORT_COUNT};
 
-enum {MUTE, BYPASS, WAITING_THRESHOLD, FIRST_PERIOD, EFFECT, OUTING};
+enum {NONE, WAITING_THRESHOLD, FIRST_PERIOD, EFFECT, OUTING};
 
 enum {MODE_ACTIVE_BP, MODE_ACTIVE_MUTE, MODE_IN_BP, MODE_IN_MUTE, MODE_SIDECHAIN_BP, MODE_SIDECHAIN_MUTE};
 /**********************************************************************************************************************************************************/
@@ -32,6 +32,7 @@ public:
     bool mode_direct_active();
     bool mode_threshold_in();
     bool mode_threshold_sidechain();
+    bool mode_mute();
     void enter_effect();
     void leave_effect();
     int get_period_length();
@@ -69,12 +70,13 @@ public:
     bool ex_active_state;
     bool next_is_active;
     uint32_t running_step;
-    bool bypass_ordered;
+    bool deactivate_ordered;
     float current_shape;
     float current_depth;
     float current_volume;
     float ex_volume;
     float last_global_factor;
+    bool has_pre_start;
 };
 
 /**********************************************************************************************************************************************************/
@@ -113,11 +115,12 @@ LV2_Handle Ramp::instantiate(const LV2_Descriptor* descriptor, double samplerate
     plugin->default_fade = 250;
     plugin->samplerate = samplerate;
     
-    plugin->running_step = BYPASS;
-    plugin->bypass_ordered = false;
+    plugin->running_step = NONE;
+    plugin->deactivate_ordered = false;
     plugin->current_volume = 1.0f;
     plugin->ex_volume = 1.0f;
     plugin->last_global_factor = 1.0f;
+    plugin->has_pre_start = false;
     
     return (LV2_Handle)plugin;
 }
@@ -154,7 +157,7 @@ bool Ramp::mode_threshold_sidechain()
     return false;
 }
 
-bool mode_mute()
+bool Ramp::mode_mute()
 {
     int plugin_mode = int(*mode);
     if (plugin_mode == MODE_ACTIVE_MUTE
@@ -170,7 +173,7 @@ bool mode_mute()
 void Ramp::enter_effect()
 {
     period_count = 0;
-    bypass_ordered = false;
+    deactivate_ordered = false;
     
     if (mode_direct_active()){
         start_first_period();
@@ -184,7 +187,7 @@ void Ramp::leave_effect()
     current_volume = 1.0f;
     
     if (mode_direct_active() or float(*active) < 0.5f){
-        running_step = BYPASS;
+        running_step = NONE;
     } else {
         running_step = WAITING_THRESHOLD;
     }
@@ -248,8 +251,10 @@ void Ramp::start_first_period()
     }
     
     if (int(*pre_silence) == 0){
+        has_pre_start = false;
         period_length = get_period_length();
     } else { 
+        has_pre_start = true;
         period_length = int(*pre_silence) * int(
             (float(60.0f / tempo_now) * float(samplerate)) / *pre_silence_units);
     }
@@ -262,7 +267,12 @@ void Ramp::start_first_period()
         fade_in = period_length - default_fade;
     }
     
-    running_step = FIRST_PERIOD;
+    if (mode_mute() and ! has_pre_start){
+        current_depth = 1.0f;
+        running_step = EFFECT;
+    } else {
+        running_step = FIRST_PERIOD;
+    }
 }
 
 
@@ -399,9 +409,6 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
     Ramp *plugin;
     plugin = (Ramp *) instance;
     
-//     float volume = powf(10.0f, (*plugin->volume)/20.0f);
-//     float v = volume;
-    
     float enter_threshold = powf(10.0f, (*plugin->enter_threshold)/20.0f);
     float leave_threshold = powf(10.0f, (*plugin->leave_threshold)/20.0f);
     if (*plugin->leave_threshold == -80.0f){
@@ -418,17 +425,13 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
     }
     
     if (plugin->ex_active_state and not active_state){
-        plugin->bypass_ordered = true;
+        plugin->deactivate_ordered = true;
         plugin->period_count = 0;
         plugin->running_step = OUTING;
     }
     
     int attack_sample = -1;
     bool node_found = false;
-    
-//     if (*plugin->mode <= 1){
-//         plugin->running_step = BYPASS;
-//     }
     
     if (plugin->running_step == WAITING_THRESHOLD){
         /* Search attack sample, prefer node (0.0f) before threshold */
@@ -511,14 +514,22 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
         
         switch(plugin->running_step)
         {
-            case BYPASS:
+            case NONE:
                 period_factor = 1;
-                v = 1;
+                if (plugin->mode_mute()){
+                    v = 0;
+                } else {
+                    v = 1;
+                }
                 break;
                 
             case WAITING_THRESHOLD:
                 period_factor = 1;
-                v = 1;
+                if (plugin->mode_mute()){
+                    v = 0;
+                } else {
+                    v = 1;
+                }
                 break;
                 
             case FIRST_PERIOD:
@@ -540,7 +551,13 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
                     }
                 } else {
                     period_factor = plugin->get_fall_period_factor();
-                } 
+                }
+                
+                if (plugin->has_pre_start and plugin->mode_mute()){
+                    plugin->current_depth = 1.0f;
+                    v = 0;
+                }
+                
                 break;
                 
             case EFFECT:
@@ -565,8 +582,14 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
                 
             case OUTING:
                 if (plugin->period_count <= plugin->default_fade){
-                    period_factor = float(plugin->period_count)/float(plugin->default_fade) \
+                    if (plugin->mode_mute()){
+                        period_factor = plugin->last_global_factor \
+                                        - float(plugin->period_count)/float(plugin->default_fade) \
+                                          * plugin->last_global_factor;
+                    } else {
+                        period_factor = float(plugin->period_count)/float(plugin->default_fade) \
                                     * (1 - plugin->last_global_factor) + plugin->last_global_factor;
+                    }
                     v = 1;
                     plugin->current_depth = 1.0f;
                     
@@ -596,7 +619,7 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
                 plugin->running_step = EFFECT;
             }
             
-            if (! plugin->next_is_active or plugin->bypass_ordered){
+            if (! plugin->next_is_active or plugin->deactivate_ordered){
                 plugin->running_step = OUTING;
             }
             
