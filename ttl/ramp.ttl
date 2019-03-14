@@ -173,6 +173,12 @@ lv2:port
     lv2:name "Division";
     lv2:portProperty lv2:integer;
     lv2:portProperty lv2:enumeration ;
+        lv2:scalePoint [rdfs:label "8beats"; rdf:value 0.125];
+        lv2:scalePoint [rdfs:label "7beats"; rdf:value 0.142857142857];
+        lv2:scalePoint [rdfs:label "6beats"; rdf:value 0.166666666667];
+        lv2:scalePoint [rdfs:label "5beats"; rdf:value 0.20];
+        lv2:scalePoint [rdfs:label "4beats"; rdf:value 0.25];
+        lv2:scalePoint [rdfs:label "3beats"; rdf:value 0.333333333333];
         lv2:scalePoint [rdfs:label "2beats"; rdf:value 0.5];
         lv2:scalePoint [rdfs:label "beat"; rdf:value 1];
         lv2:scalePoint [rdfs:label "beat/2"; rdf:value 2];
@@ -181,12 +187,34 @@ lv2:port
         lv2:scalePoint [rdfs:label "beat/6"; rdf:value 6];
         lv2:scalePoint [rdfs:label "beat/8"; rdf:value 8];
     lv2:default 4;
-    lv2:minimum 1;
+    lv2:minimum 0.125;
     lv2:maximum 8;
 ],
 [
-    a lv2:InputPort, lv2:ControlPort ;
+    a lv2:ControlPort, lv2:InputPort;
     lv2:index 13;
+    lv2:symbol "max_duration";
+    lv2:name "Max Duration";
+    lv2:portProperty lv2:integer;
+    lv2:portProperty lv2:enumeration ;
+        lv2:scalePoint [rdfs:label "8beats"; rdf:value 0.125];
+        lv2:scalePoint [rdfs:label "4beats"; rdf:value 0.25];
+        lv2:scalePoint [rdfs:label "3beats"; rdf:value 0.333333333333];
+        lv2:scalePoint [rdfs:label "2beats"; rdf:value 0.5];
+        lv2:scalePoint [rdfs:label "beat"; rdf:value 1];
+        lv2:scalePoint [rdfs:label "beat/2"; rdf:value 2];
+        lv2:scalePoint [rdfs:label "beat/3"; rdf:value 3];
+        lv2:scalePoint [rdfs:label "beat/4"; rdf:value 4];
+        lv2:scalePoint [rdfs:label "beat/6"; rdf:value 6];
+        lv2:scalePoint [rdfs:label "beat/8"; rdf:value 8];
+        lv2:scalePoint [rdfs:label "beat/16"; rdf:value 16];
+    lv2:default 0.125;
+    lv2:minimum 0.125;
+    lv2:maximum 16;
+],
+[
+    a lv2:InputPort, lv2:ControlPort ;
+    lv2:index 14;
     lv2:symbol "half_speed" ;
     lv2:name "Half Speed" ;
     lv2:default 0 ;
@@ -197,7 +225,7 @@ lv2:port
 ],
 [
     a lv2:InputPort, lv2:ControlPort ;
-    lv2:index 14;
+    lv2:index 15;
     lv2:symbol "double_speed" ;
     lv2:name "Double Speed" ;
     lv2:default 0 ;
@@ -209,7 +237,7 @@ lv2:port
 
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 15;
+    lv2:index 16;
     lv2:symbol "attack";
     lv2:name "Attack";
     lv2:default 4;
@@ -219,7 +247,7 @@ lv2:port
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 16;
+    lv2:index 17;
     lv2:symbol "shape";
     lv2:name "Shape";
     lv2:default 0;
@@ -228,7 +256,7 @@ lv2:port
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 17;
+    lv2:index 18;
     lv2:symbol "depth";
     lv2:name "Depth";
     lv2:default 1;
@@ -237,7 +265,7 @@ lv2:port
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 18;
+    lv2:index 19;
     lv2:symbol "volume";
     lv2:name "Volume";
     units:unit units:db ;
@@ -247,7 +275,7 @@ lv2:port
 ],
 [
     a lv2:AudioPort, lv2:OutputPort;
-    lv2:index 19;
+    lv2:index 20;
     lv2:symbol "outtest";
     lv2:name "OutTest";
 ].

@@ -9,7 +9,7 @@
 
 #define PLUGIN_URI "http://plujain/plugins/ramp"
 enum {IN, SIDECHAIN, OUT, ACTIVE, MODE, ENTER_THRESHOLD, LEAVE_THRESHOLD, PRE_SILENCE, PRE_SILENCE_UNITS,
-      SYNC_BPM, HOST_TEMPO, TEMPO, DIVISION, HALF_SPEED, DOUBLE_SPEED, ATTACK,
+      SYNC_BPM, HOST_TEMPO, TEMPO, DIVISION, MAX_DURATION, HALF_SPEED, DOUBLE_SPEED, ATTACK,
       SHAPE, DEPTH, VOLUME, OUT_TEST, PLUGIN_PORT_COUNT};
 
 enum {NONE, WAITING_THRESHOLD, FIRST_PERIOD, EFFECT, OUTING};
@@ -35,7 +35,9 @@ public:
     bool mode_mute();
     void enter_effect();
     void leave_effect();
+    float get_tempo();
     int get_period_length();
+    int get_current_duration();
     void start_period();
     void start_first_period();
     float get_fall_period_factor();
@@ -53,6 +55,7 @@ public:
     float *tempo;
     float *host_tempo;
     float *division;
+    float *max_duration;
     float *half_speed;
     float *double_speed;
     float *attack;
@@ -64,6 +67,7 @@ public:
     double samplerate;
     int period_count;
     int period_length;
+    int current_duration;
     int fade_in;
     int default_fade;
     
@@ -109,6 +113,7 @@ LV2_Handle Ramp::instantiate(const LV2_Descriptor* descriptor, double samplerate
     
     plugin->period_count = 0;
     plugin->period_length = 12000;
+    plugin->current_duration = 12000;
     plugin->next_is_active = false;
     plugin->ex_active_state = false;
     
@@ -193,7 +198,7 @@ void Ramp::leave_effect()
     }
 }
 
-int Ramp::get_period_length()
+float Ramp::get_tempo()
 {
     float tempo_now;
     if (*sync_bpm > 0.5){
@@ -201,6 +206,14 @@ int Ramp::get_period_length()
     } else {
         tempo_now = *tempo;
     }
+    
+    return tempo_now;
+}
+
+
+int Ramp::get_period_length()
+{
+    float tempo_now = get_tempo();
     
     int tmp_period_length = int(
         (float(60.0f / tempo_now) * float(samplerate)) / *division);
@@ -220,16 +233,31 @@ int Ramp::get_period_length()
     return tmp_period_length;
 }
 
+int Ramp::get_current_duration()
+{
+    float tempo_now = get_tempo();
+    
+    int tmp_duration = int(
+        (float(60.0f / tempo_now) * float(samplerate)) / *max_duration);
+    
+    if (tmp_duration < period_length){
+        return tmp_duration;
+    } else {
+        return period_length;
+    }
+}
+
 
 void Ramp::start_period()
 {
     period_count = 0;
     period_length = get_period_length();
+    current_duration = get_current_duration();
     
     fade_in = (float(*attack) * float(samplerate)) / 1000;
             
-    if (fade_in >= period_length - default_fade){
-        fade_in = period_length - default_fade;
+    if (fade_in >= current_duration - default_fade){
+        fade_in = current_duration - default_fade;
     }
     
     ex_volume = current_volume;
@@ -243,12 +271,7 @@ void Ramp::start_first_period()
     current_shape = float(*shape);
     current_depth = float(*depth);
     
-    float tempo_now;
-    if (*sync_bpm > 0.5){
-        tempo_now = *host_tempo;
-    } else {
-        tempo_now = *tempo;
-    }
+    float tempo_now = get_tempo();
     
     if (int(*pre_silence) == 0){
         has_pre_start = false;
@@ -259,12 +282,8 @@ void Ramp::start_first_period()
             (float(60.0f / tempo_now) * float(samplerate)) / *pre_silence_units);
     }
     
-//     if (tmp_period_length < 2400){
-//         tmp_period_length = 2400;
-//     }
-    
-    if (fade_in >= period_length - default_fade){
-        fade_in = period_length - default_fade;
+    if (fade_in >= current_duration - default_fade){
+        fade_in = current_duration - default_fade;
     }
     
     if (mode_mute() and ! has_pre_start){
@@ -278,11 +297,15 @@ void Ramp::start_first_period()
 
 float Ramp::get_fall_period_factor()
 {
+    if (period_count > current_duration){
+        return 0.0f;
+    }
+    
     float period_factor = 1.0f;
-    int n_max = (period_length - fade_in) / default_fade;
+    int n_max = (current_duration - fade_in) / default_fade;
                     
     float pre_factor = 1.00f - float(period_count - fade_in) 
-                       / (float(period_length - fade_in));
+                       / (float(current_duration - fade_in));
     float shape = current_shape;
     
     if (n_max < 1){
@@ -380,6 +403,9 @@ void Ramp::connect_port(LV2_Handle instance, uint32_t port, void *data)
             break;
         case HALF_SPEED:
             plugin->half_speed = (float*) data;
+            break;
+        case MAX_DURATION:
+            plugin->max_duration = (float*) data;
             break;
         case DOUBLE_SPEED:
             plugin->double_speed = (float*) data;
