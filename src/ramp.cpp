@@ -3,19 +3,67 @@
 #include <string.h>
 #include <math.h>
 #include <lv2.h>
+#include <map>
 #include <iostream>
 
+#include <lv2/lv2plug.in/ns/lv2core/lv2.h>
+#include <lv2/lv2plug.in/ns/ext/atom/atom.h>
+#include <lv2/lv2plug.in/ns/ext/atom/forge.h>
+#include <lv2/lv2plug.in/ns/ext/log/logger.h>
+#include <lv2/lv2plug.in/ns/ext/midi/midi.h>
+#include "lv2/lv2plug.in/ns/ext/time/time.h"
+#include <lv2/lv2plug.in/ns/ext/urid/urid.h>
 /**********************************************************************************************************************************************************/
 
 #define PLUGIN_URI "http://plujain/plugins/ramp"
 enum {IN, SIDECHAIN, OUT, ACTIVE, MODE, ENTER_THRESHOLD, LEAVE_THRESHOLD, PRE_SILENCE, PRE_SILENCE_UNITS,
       SYNC_BPM, HOST_TEMPO, TEMPO, DIVISION, MAX_DURATION, HALF_SPEED, DOUBLE_SPEED, ATTACK,
-      SHAPE, DEPTH, VOLUME, OUT_TEST, PLUGIN_PORT_COUNT};
+      SHAPE, DEPTH, VOLUME, OUT_TEST, CTRL_IN, MIDI_IN, MIDI_OUT, PLUGIN_PORT_COUNT};
 
 enum {NONE, WAITING_THRESHOLD, FIRST_PERIOD, EFFECT, OUTING};
 
-enum {MODE_ACTIVE_BP, MODE_ACTIVE_MUTE, MODE_IN_BP, MODE_IN_MUTE, MODE_SIDECHAIN_BP, MODE_SIDECHAIN_MUTE};
+enum {MODE_ACTIVE_BP, MODE_ACTIVE_MUTE, MODE_IN_BP, MODE_IN_MUTE,
+      MODE_SIDECHAIN_BP, MODE_SIDECHAIN_MUTE, MODE_HOST_TRANSPORT_BP, MODE_HOST_TRANSPORT_MUTE,
+      MODE_MIDI_IN_BP, MODE_MIDI_IN_MUTE};
+
+typedef struct {
+	LV2_URID atom_Blank;
+	LV2_URID atom_Object;
+	LV2_URID atom_Sequence;
+	LV2_URID midi_MidiEvent;
+	LV2_URID atom_Float;
+	LV2_URID atom_Int;
+	LV2_URID atom_Long;
+	LV2_URID time_Position;
+	LV2_URID time_bar;
+	LV2_URID time_barBeat;
+	LV2_URID time_beatUnit;
+	LV2_URID time_beatsPerBar;
+	LV2_URID time_beatsPerMinute;
+	LV2_URID time_speed;
+} PluginURIs;
+
 /**********************************************************************************************************************************************************/
+
+static void
+map_mem_uris (LV2_URID_Map* map, PluginURIs* uris)
+{
+	uris->atom_Blank          = map->map (map->handle, LV2_ATOM__Blank);
+	uris->atom_Object         = map->map (map->handle, LV2_ATOM__Object);
+	uris->midi_MidiEvent      = map->map (map->handle, LV2_MIDI__MidiEvent);
+	uris->atom_Sequence       = map->map (map->handle, LV2_ATOM__Sequence);
+	uris->time_Position       = map->map (map->handle, LV2_TIME__Position);
+	uris->atom_Long           = map->map (map->handle, LV2_ATOM__Long);
+	uris->atom_Int            = map->map (map->handle, LV2_ATOM__Int);
+	uris->atom_Float          = map->map (map->handle, LV2_ATOM__Float);
+	uris->time_bar            = map->map (map->handle, LV2_TIME__bar);
+	uris->time_barBeat        = map->map (map->handle, LV2_TIME__barBeat);
+	uris->time_beatUnit       = map->map (map->handle, LV2_TIME__beatUnit);
+	uris->time_beatsPerBar    = map->map (map->handle, LV2_TIME__beatsPerBar);
+	uris->time_beatsPerMinute = map->map (map->handle, LV2_TIME__beatsPerMinute);
+	uris->time_speed          = map->map (map->handle, LV2_TIME__speed);
+}
+
 
 class Ramp
 {
@@ -32,15 +80,20 @@ public:
     bool mode_direct_active();
     bool mode_threshold_in();
     bool mode_threshold_sidechain();
+    bool mode_host_transport();
+    bool mode_midi_in();
     bool mode_mute();
     void enter_effect();
     void leave_effect();
     float get_tempo();
+    float get_division();
     int get_period_length();
-    int get_current_duration();
+    void set_current_duration();
     void start_period();
     void start_first_period();
     float get_fall_period_factor();
+//     void update_position(const LV2_Atom_Object* obj);
+    void send_midi_start_stop(bool start);
     
     float *in;
     float *sidechain;
@@ -63,6 +116,9 @@ public:
     float *depth;
     float *volume;
     float *out_test;
+    const LV2_Atom_Sequence *ctrl_in;
+    const LV2_Atom_Sequence *midi_in;
+    LV2_Atom_Sequence *midi_out;
     
     double samplerate;
     int period_count;
@@ -81,6 +137,33 @@ public:
     float ex_volume;
     float last_global_factor;
     bool has_pre_start;
+    float random_catching;
+    int n_period;
+    bool ternary;
+    int taken_by_groove;
+    
+    /* Host Time */
+	bool     host_info;
+	float    host_bpm;
+	double   bar_beats;
+	float    host_speed;
+	int      host_div;
+    
+    /* LV2 Output */
+	LV2_Log_Log* log;
+	LV2_Log_Logger logger;
+    
+    LV2_Atom_Forge forge;
+	LV2_Atom_Forge_Frame frame;
+    
+//     LV2_URID midi_MidiEvent;
+    LV2_URID_Map* map;
+    
+//     LV2_URID_Map* map;
+	PluginURIs uris;
+    uint8_t  chn;
+// 	LV2_Atom_Forge forge;
+// 	LV2_Atom_Forge_Frame frame;
 };
 
 /**********************************************************************************************************************************************************/
@@ -126,11 +209,79 @@ LV2_Handle Ramp::instantiate(const LV2_Descriptor* descriptor, double samplerate
     plugin->ex_volume = 1.0f;
     plugin->last_global_factor = 1.0f;
     plugin->has_pre_start = false;
+    plugin->random_catching = 0.0f;
+    plugin->n_period = 1;
+    plugin->taken_by_groove = 0;
+    
+    int i;
+	for (i=0; features[i]; ++i) {
+		if (!strcmp (features[i]->URI, LV2_URID__map)) {
+			plugin->map = (LV2_URID_Map*)features[i]->data;
+		} else if (!strcmp (features[i]->URI, LV2_LOG__log)) {
+			plugin->log = (LV2_Log_Log*)features[i]->data;
+		}
+	}
+	
+	lv2_log_logger_init (&plugin->logger, plugin->map, plugin->log);
+    
+    if (!plugin->map) {
+		lv2_log_error (&plugin->logger, "Ramp.lv2 error: Host does not support urid:map\n");
+		free (plugin);
+		return NULL;
+	}
+    
+    lv2_atom_forge_init (&plugin->forge, plugin->map);
+    map_mem_uris(plugin->map, &plugin->uris);
+//     plugin->midi_MidiEvent = plugin->map->map(plugin->map->handle, LV2_MIDI__MidiEvent);
+    
+    
     
     return (LV2_Handle)plugin;
 }
 
 /**********************************************************************************************************************************************************/
+static void
+update_position (Ramp* plugin, const LV2_Atom_Object* obj)
+{
+	const PluginURIs* uris = &plugin->uris;
+
+	LV2_Atom* bar   = NULL;
+	LV2_Atom* beat  = NULL;
+	LV2_Atom* bunit = NULL;
+	LV2_Atom* bpb   = NULL;
+	LV2_Atom* bpm   = NULL;
+	LV2_Atom* speed = NULL;
+
+	lv2_atom_object_get (
+			obj,
+			uris->time_bar, &bar,
+			uris->time_barBeat, &beat,
+			uris->time_beatUnit, &bunit,
+			uris->time_beatsPerBar, &bpb,
+			uris->time_beatsPerMinute, &bpm,
+			uris->time_speed, &speed,
+			NULL);
+
+	if (   bpm   && bpm->type == uris->atom_Float
+			&& bpb   && bpb->type == uris->atom_Float
+			&& bar   && bar->type == uris->atom_Long
+			&& beat  && beat->type == uris->atom_Float
+			&& bunit && bunit->type == uris->atom_Int
+			&& speed && speed->type == uris->atom_Float)
+	{
+		float    _bpb   = ((LV2_Atom_Float*)bpb)->body;
+		int64_t  _bar   = ((LV2_Atom_Long*)bar)->body;
+		float    _beat  = ((LV2_Atom_Float*)beat)->body;
+
+		plugin->host_div   = ((LV2_Atom_Int*)bunit)->body;
+		plugin->host_bpm   = ((LV2_Atom_Float*)bpm)->body;
+		plugin->host_speed = ((LV2_Atom_Float*)speed)->body;
+
+		plugin->bar_beats  = _bar * _bpb + _beat; // * host_div / 4.0 // TODO map host metrum
+		plugin->host_info  = true;
+	}
+}
+
 bool Ramp::mode_direct_active()
 {
     int plugin_mode = int(*mode);
@@ -162,12 +313,34 @@ bool Ramp::mode_threshold_sidechain()
     return false;
 }
 
+bool Ramp::mode_host_transport()
+{
+    int plugin_mode = int(*mode);
+    if (plugin_mode == MODE_HOST_TRANSPORT_BP or plugin_mode == MODE_HOST_TRANSPORT_MUTE){
+        return true;
+    }
+    
+    return false;
+}
+
+
+bool Ramp::mode_midi_in()
+{
+    int plugin_mode = int(*mode);
+    if (plugin_mode == MODE_MIDI_IN_BP or plugin_mode == MODE_MIDI_IN_MUTE){
+        return true;
+    }
+    
+    return false;
+}
+
 bool Ramp::mode_mute()
 {
     int plugin_mode = int(*mode);
     if (plugin_mode == MODE_ACTIVE_MUTE
         or plugin_mode == MODE_IN_MUTE
-        or plugin_mode == MODE_SIDECHAIN_MUTE){
+        or plugin_mode == MODE_SIDECHAIN_MUTE
+        or plugin_mode == MODE_HOST_TRANSPORT_MUTE){
             return true;
     }
     
@@ -177,6 +350,8 @@ bool Ramp::mode_mute()
 
 void Ramp::enter_effect()
 {
+    
+//     std::cout << r << std::endl;
     period_count = 0;
     deactivate_ordered = false;
     
@@ -191,11 +366,13 @@ void Ramp::leave_effect()
 {
     current_volume = 1.0f;
     
-    if (mode_direct_active() or float(*active) < 0.5f){
+    if (mode_direct_active() or mode_host_transport() or mode_midi_in() or float(*active) < 0.5f){
         running_step = NONE;
     } else {
         running_step = WAITING_THRESHOLD;
     }
+    
+    send_midi_start_stop(false);
 }
 
 float Ramp::get_tempo()
@@ -210,21 +387,108 @@ float Ramp::get_tempo()
     return tempo_now;
 }
 
+float Ramp::get_division()
+{
+    ternary = false;
+    
+    switch (int(*division)){
+        case 0:
+            return 1/8.0f;
+        case 1:
+            return 1/7.0f;
+        case 2:
+            return 1/6.0f;
+        case 3:
+            return 1/5.0f;
+        case 4:
+            return 1/4.0f;
+        case 5:
+            return 1/3.0f;
+        case 6:
+            return 1/2.0f;
+        case 7:
+            return 1;
+        case 8:
+            return 2;
+        case 9:
+            ternary = true;
+            return 2;
+        case 10:
+            return 3;
+        case 11:
+            return 4;
+        case 12:
+            ternary = true;
+            return 4;
+        case 13:
+            return 6;
+        case 14:
+            return 8;
+    }
+    
+    return 4;
+}
+
 
 int Ramp::get_period_length()
 {
     float tempo_now = get_tempo();
     
+    float tmp_division = float(get_division());
+    
+    if (ternary){
+        if (*half_speed > 0.5f and *double_speed > 0.5f){
+            ;
+        } else if (*half_speed > 0.5f){
+//             if (tmp_division == 2){
+//                 tmp_division = 1;
+//             } else if (tmp_division == 4){
+//                 tmp_division = 2;
+//             }
+            tmp_division = tmp_division / 2.0f;
+            ternary = false;
+        } else if (*double_speed > 0.5f){
+            tmp_division = tmp_division * 3/2;
+//             if (tmp_division == 2){
+//                 tmp_division = 3;
+//             } else if (tmp_division == 4){
+//                 tmp_division = 6;
+//             }
+            ternary = false;
+        }
+    } else {
+        if (*half_speed > 0.5f){
+            tmp_division = tmp_division / 2.0f;
+//             tmp_period_length = tmp_period_length * 2;
+        }
+        
+        if (*double_speed > 0.5f){
+            tmp_division = tmp_division * 2.0f;
+//             tmp_period_length = tmp_period_length / 2;
+        }
+    }
+    
     int tmp_period_length = int(
-        (float(60.0f / tempo_now) * float(samplerate)) / *division);
+        (float(60.0f / tempo_now) * float(samplerate)) / tmp_division);
     
-    if (*half_speed > 0.5f){
-        tmp_period_length = tmp_period_length * 2;
+    if (ternary){
+        if (n_period == 1){
+            tmp_period_length = tmp_period_length - taken_by_groove;
+        } else {
+            taken_by_groove = int(0.33333333333 * tmp_period_length);
+            tmp_period_length = tmp_period_length + taken_by_groove;
+        }
     }
     
-    if (*double_speed > 0.5f){
-        tmp_period_length = tmp_period_length / 2;
-    }
+//     float r = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+// //     float random = std::map(r, 0.0f, 1.0f, 0.9f, 1.1f);
+//     r = r /5;
+//     float random = 0.9f + r;
+//     
+//     tmp_period_length = tmp_period_length * (random - random_catching);
+//     random_catching += random -1;
+//     std::cout << random_catching << std::endl;
+    
     
     if (tmp_period_length < 2400){
         tmp_period_length = 2400;
@@ -233,26 +497,33 @@ int Ramp::get_period_length()
     return tmp_period_length;
 }
 
-int Ramp::get_current_duration()
+void Ramp::set_current_duration()
 {
     float tempo_now = get_tempo();
     
     int tmp_duration = int(
         (float(60.0f / tempo_now) * float(samplerate)) / *max_duration);
     
-    if (tmp_duration < period_length){
-        return tmp_duration;
-    } else {
-        return period_length;
+    if (tmp_duration > period_length){
+        tmp_duration = period_length;
     }
+    
+    current_duration = tmp_duration;
 }
 
 
 void Ramp::start_period()
 {
     period_count = 0;
+    
+    if (n_period == 0){
+        n_period = 1;
+    } else {
+        n_period = 0;
+    }
+    
     period_length = get_period_length();
-    current_duration = get_current_duration();
+    set_current_duration();
     
     fade_in = (float(*attack) * float(samplerate)) / 1000;
             
@@ -262,11 +533,19 @@ void Ramp::start_period()
     
     ex_volume = current_volume;
     current_volume = powf(10.0f, (*volume)/20.0f);
+    
+    
+//     uint8_t msg[3];
+//     msg[0] = 0xfc;
+//     msg[1] = 57;
+//     msg[2] = 120;
+//     send_midi_test(msg);
 }
 
 
 void Ramp::start_first_period()
 {
+    n_period = 1;
     start_period();
     current_shape = float(*shape);
     current_depth = float(*depth);
@@ -292,6 +571,8 @@ void Ramp::start_first_period()
     } else {
         running_step = FIRST_PERIOD;
     }
+    
+    send_midi_start_stop(true);
 }
 
 
@@ -340,9 +621,40 @@ float Ramp::get_fall_period_factor()
 }
 
 
+void Ramp::send_midi_start_stop(bool start)
+{
+//     Ramp *plugin;
+//     plugin = (Ramp *) instance;
+    LV2_Atom midiatom;
+    midiatom.type = uris.midi_MidiEvent;
+    midiatom.size = 3;
+    
+    uint8_t msg[3];
+    msg[0] = 0xfa;
+    if (!start){
+        msg[0] = 0xfc;
+    }
+    msg[1] = 57;
+    msg[2] = 120;
+//     lv2_log_error (&logger, "StepSeq.lv2: Note-off for a note that's already off\n");
+    
+//     std::cout << "eroij" << std::endl;
+    if (0 == lv2_atom_forge_frame_time (&forge, 0)) return;
+	if (0 == lv2_atom_forge_raw (&forge, &midiatom, sizeof (LV2_Atom))) return;
+//     std::cout << "oijiej" << std::endl;
+	if (0 == lv2_atom_forge_raw (&forge, msg, 3)) return;
+//     std::cout << "zmoef" << std::endl;
+    lv2_atom_forge_pad (&forge, sizeof (LV2_Atom) + 3);
+}
+
+
 void Ramp::activate(LV2_Handle instance)
 {
     // TODO: include the activate function code here
+    Ramp *plugin;
+    plugin = (Ramp *) instance;
+    plugin->chn = 255;
+    
 }
 
 /**********************************************************************************************************************************************************/
@@ -425,6 +737,15 @@ void Ramp::connect_port(LV2_Handle instance, uint32_t port, void *data)
         case OUT_TEST:
             plugin->out_test = (float*) data;
             break;
+        case CTRL_IN:
+            plugin->ctrl_in = (const LV2_Atom_Sequence*) data;
+            break;
+        case MIDI_IN:
+            plugin->midi_in = (const LV2_Atom_Sequence*) data;
+            break;
+        case MIDI_OUT:
+            plugin->midi_out = (LV2_Atom_Sequence*) data;
+            break;
     }
 }
 
@@ -434,6 +755,89 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
 {
     Ramp *plugin;
     plugin = (Ramp *) instance;
+    
+    const uint32_t capacity = plugin->midi_out->atom.size;
+	lv2_atom_forge_set_buffer (&plugin->forge, (uint8_t*)plugin->midi_out, capacity);
+	lv2_atom_forge_sequence_head (&plugin->forge, &plugin->frame, 0);
+    
+    /* process control events */
+	LV2_Atom_Event* ev = lv2_atom_sequence_begin (&(plugin->ctrl_in)->body);
+	while (!lv2_atom_sequence_is_end (&(plugin->ctrl_in)->body, (plugin->ctrl_in)->atom.size, ev)) {
+		if (ev->body.type == plugin->uris.atom_Blank || ev->body.type == plugin->uris.atom_Object) {
+			const LV2_Atom_Object* obj = (LV2_Atom_Object*)&ev->body;
+			if (obj->body.otype == plugin->uris.time_Position) {
+				update_position(plugin, obj);
+			}
+		}
+		ev = lv2_atom_sequence_next (ev);
+	}
+	
+	if (plugin->mode_midi_in()){
+        LV2_Atom_Event const* midi_ev = (LV2_Atom_Event const*)((uintptr_t)((&(plugin->midi_in)->body) + 1)); // lv2_atom_sequence_begin
+        while( // !lv2_atom_sequence_is_end
+            (const uint8_t*)midi_ev < ((const uint8_t*) &(plugin->midi_in)->body + (plugin->midi_in)->atom.size)
+            ){
+            if (midi_ev->body.type == plugin->uris.midi_MidiEvent) {
+        // #ifdef DEBUG_MIDI_EVENT // debug midi messages in synth -- not rt-safe(!)
+                printf ("%5d (%d):", midi_ev->time.frames,  midi_ev->body.size);
+                for (uint8_t i = 0; i < midi_ev->body.size; ++i) {
+                printf (" %02x", ((const uint8_t*)(midi_ev+1))[i]);
+                }
+                
+                
+                for (uint8_t i = 0; i < midi_ev->body.size; ++i) {
+                    printf (" %02x", ((const uint8_t*)(midi_ev+1))[i]);
+                }
+                
+                printf ("\n");
+                
+                if (((const uint8_t*)(midi_ev+1))[0] == 0xfa){
+                    if (plugin->running_step < FIRST_PERIOD){
+                        std::cout << "masasaq" << std::endl;
+                        plugin->start_first_period();
+                    }
+                } else if (((const uint8_t*)(midi_ev+1))[0] == 0xfc){
+                    if (plugin->running_step == EFFECT){
+                        plugin->running_step = OUTING;
+                        std::cout <<"tu vois la cleaq" << std::endl;
+                    }
+                }
+                
+            
+    // #endif
+    //         if (written + BUFFER_SIZE_SAMPLES < midi_ev->time.frames
+    //             && midi_ev->time.frames < n_samples) {
+    //           /* first synthesize sound up until the message timestamp */
+    // //           written = synth_sound(self->synth, written, midi_ev->time.frames, audio);
+    //         }
+            /* send midi message to synth */
+    //         if (self->xmas) {
+    //           synth_parse_xmas(self->synth, (const uint8_t*)(ev+1), ev->body.size);
+    //         } else {
+    //           synth_parse_midi(self->synth, (const uint8_t*)(ev+1), ev->body.size);
+    //         }
+                
+            }
+            midi_ev = (LV2_Atom_Event const*) // lv2_atom_sequence_next()
+                ((uintptr_t)((const uint8_t*)midi_ev + sizeof(LV2_Atom_Event) + ((midi_ev->body.size + 7) & ~7)));
+            
+        }
+    }
+    
+    if (plugin->mode_host_transport()){
+        if (plugin->host_speed > 0){
+            if (plugin->running_step < FIRST_PERIOD){
+                std::cout << "masas" << std::endl;
+                plugin->start_first_period();
+            }
+        } else {
+            if (plugin->running_step == EFFECT){
+                plugin->running_step = OUTING;
+                std::cout <<"tu vois la cle" << std::endl;
+            }
+        }
+    }
+        
     
     float enter_threshold = powf(10.0f, (*plugin->enter_threshold)/20.0f);
     float leave_threshold = powf(10.0f, (*plugin->leave_threshold)/20.0f);
@@ -600,6 +1004,7 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
                         if (tmp_period_length >= (plugin->fade_in + plugin->default_fade)){
                             plugin->period_length = tmp_period_length;
                         }
+                        plugin->set_current_duration();
                     }
                     
                     period_factor = plugin->get_fall_period_factor();
@@ -652,7 +1057,7 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
             plugin->next_is_active = false;
         }
         
-        if (plugin->mode_direct_active()){
+        if (plugin->mode_direct_active() or plugin->mode_host_transport() or plugin->mode_midi_in()){
             plugin->next_is_active = true;
         } else {
             if (plugin->period_count > (plugin->period_length -2400)
@@ -665,6 +1070,28 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
             }
         }
     }
+    
+    LV2_ATOM_SEQUENCE_FOREACH (plugin->midi_out, ev1) {
+		LV2_ATOM_SEQUENCE_FOREACH (plugin->midi_out, ev2) {
+			if (ev2 <= ev1) {
+				continue;
+			}
+			if (ev1->time.frames > ev2->time.frames) {
+				// swap events
+				assert (ev1->body.size == ev2->body.size);
+				assert (ev1->body.size == 3);
+				int64_t tme = ev1->time.frames;
+				uint8_t body[3];
+				memcpy (body, (const uint8_t*)(ev1 + 1), 3);
+				memcpy ((uint8_t*)(ev1 + 1), (const uint8_t*)(ev2 + 1), 3);
+				ev1->time.frames = ev2->time.frames;
+				memcpy ((uint8_t*)(ev2 + 1), body, 3);
+				ev2->time.frames = tme;
+			}
+		}
+	}
+    
+    
     
     plugin->ex_active_state = active_state;
 }

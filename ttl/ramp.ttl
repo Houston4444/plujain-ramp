@@ -1,11 +1,14 @@
+@prefix atom: <http://lv2plug.in/ns/ext/atom#>.
 @prefix lv2:  <http://lv2plug.in/ns/lv2core#>.
 @prefix doap: <http://usefulinc.com/ns/doap#>.
 @prefix epp: <http://lv2plug.in/ns/ext/port-props#>.
 @prefix foaf: <http://xmlns.com/foaf/0.1/>.
+@prefix midi:  <http://lv2plug.in/ns/ext/midi#> .
 @prefix mod: <http://moddevices.com/ns/modgui#>.
 @prefix pprop: <http://lv2plug.in/ns/ext/port-props#>.
 @prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
+@prefix time:  <http://lv2plug.in/ns/ext/time#>.
 @prefix units: <http://lv2plug.in/ns/extensions/units#>.
 @prefix ue: <http://lv2plug.in/ns/extensions/units#> .
 
@@ -80,9 +83,13 @@ lv2:port
         lv2:scalePoint [rdfs:label "In/Mute"; rdf:value 3];
         lv2:scalePoint [rdfs:label "Sidechain/Bypass"; rdf:value 4];
         lv2:scalePoint [rdfs:label "Sidechain/Mute"; rdf:value 5];
+        lv2:scalePoint [rdfs:label "Host Transport/Bypass"; rdf:value 6];
+        lv2:scalePoint [rdfs:label "Host Transport/Mute"; rdf:value 7];
+        lv2:scalePoint [rdfs:label "Midi In Start/Stop /Bypass"; rdf:value 8];
+        lv2:scalePoint [rdfs:label "Midi In Start/Stop /Mute"; rdf:value 9];
     lv2:default 0;
     lv2:minimum 0;
-    lv2:maximum 5;
+    lv2:maximum 9;
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
@@ -173,30 +180,32 @@ lv2:port
     lv2:name "Division";
     lv2:portProperty lv2:integer;
     lv2:portProperty lv2:enumeration ;
-        lv2:scalePoint [rdfs:label "8beats"; rdf:value 0.125];
-        lv2:scalePoint [rdfs:label "7beats"; rdf:value 0.142857142857];
-        lv2:scalePoint [rdfs:label "6beats"; rdf:value 0.166666666667];
-        lv2:scalePoint [rdfs:label "5beats"; rdf:value 0.20];
-        lv2:scalePoint [rdfs:label "4beats"; rdf:value 0.25];
-        lv2:scalePoint [rdfs:label "3beats"; rdf:value 0.333333333333];
-        lv2:scalePoint [rdfs:label "2beats"; rdf:value 0.5];
-        lv2:scalePoint [rdfs:label "beat"; rdf:value 1];
-        lv2:scalePoint [rdfs:label "beat/2"; rdf:value 2];
-        lv2:scalePoint [rdfs:label "beat/3"; rdf:value 3];
-        lv2:scalePoint [rdfs:label "beat/4"; rdf:value 4];
-        lv2:scalePoint [rdfs:label "beat/6"; rdf:value 6];
-        lv2:scalePoint [rdfs:label "beat/8"; rdf:value 8];
-    lv2:default 4;
-    lv2:minimum 0.125;
-    lv2:maximum 8;
+        lv2:scalePoint [rdfs:label "8beats"; rdf:value 0];
+        lv2:scalePoint [rdfs:label "7beats"; rdf:value 1];
+        lv2:scalePoint [rdfs:label "6beats"; rdf:value 2];
+        lv2:scalePoint [rdfs:label "5beats"; rdf:value 3];
+        lv2:scalePoint [rdfs:label "4beats"; rdf:value 4];
+        lv2:scalePoint [rdfs:label "3beats"; rdf:value 5];
+        lv2:scalePoint [rdfs:label "2beats"; rdf:value 6];
+        lv2:scalePoint [rdfs:label "beat";   rdf:value 7];
+        lv2:scalePoint [rdfs:label "beat/2"; rdf:value 8];
+        lv2:scalePoint [rdfs:label "beat/2 t"; rdf:value 9];
+        lv2:scalePoint [rdfs:label "beat/3"; rdf:value 10];
+        lv2:scalePoint [rdfs:label "beat/4"; rdf:value 11];
+        lv2:scalePoint [rdfs:label "beat/4 t"; rdf:value 12];
+        lv2:scalePoint [rdfs:label "beat/6"; rdf:value 13];
+        lv2:scalePoint [rdfs:label "beat/8"; rdf:value 14];
+    lv2:default 11;
+    lv2:minimum 0;
+    lv2:maximum 14;
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
     lv2:index 13;
     lv2:symbol "max_duration";
     lv2:name "Max Duration";
-    lv2:portProperty lv2:integer;
-    lv2:portProperty lv2:enumeration ;
+#     lv2:portProperty lv2:integer;
+#     lv2:portProperty lv2:enumeration ;
         lv2:scalePoint [rdfs:label "8beats"; rdf:value 0.125];
         lv2:scalePoint [rdfs:label "4beats"; rdf:value 0.25];
         lv2:scalePoint [rdfs:label "3beats"; rdf:value 0.333333333333];
@@ -278,4 +287,28 @@ lv2:port
     lv2:index 20;
     lv2:symbol "outtest";
     lv2:name "OutTest";
+],
+[
+    a atom:AtomPort, lv2:InputPort;
+    atom:bufferType atom:Sequence;
+    atom:supports time:Position;
+    lv2:index 21;
+    lv2:symbol "ctrl_in";
+    lv2:name "Control In";
+],
+[
+    a atom:AtomPort, lv2:InputPort;
+    atom:bufferType atom:Sequence;
+    atom:supports midi:MidiEvent;
+    lv2:index 22;
+    lv2:symbol "midi_in";
+    lv2:name "MIDI In";
+],
+[
+    a atom:AtomPort, lv2:OutputPort;
+    atom:bufferType atom:Sequence;
+    atom:supports midi:MidiEvent;
+    lv2:index 23;
+    lv2:symbol "midiout";
+    lv2:name "MIDI Out";
 ].
