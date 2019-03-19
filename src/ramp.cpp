@@ -16,9 +16,10 @@
 /**********************************************************************************************************************************************************/
 
 #define PLUGIN_URI "http://plujain/plugins/ramp"
-enum {IN, SIDECHAIN, OUT, ACTIVE, MODE, ENTER_THRESHOLD, LEAVE_THRESHOLD, PRE_SILENCE, PRE_SILENCE_UNITS,
-      SYNC_BPM, HOST_TEMPO, TEMPO, DIVISION, MAX_DURATION, HALF_SPEED, DOUBLE_SPEED, ATTACK,
-      SHAPE, DEPTH, VOLUME, OUT_TEST, CTRL_IN, MIDI_IN, MIDI_OUT, PLUGIN_PORT_COUNT};
+enum {IN, SIDECHAIN, CTRL_IN, MIDI_IN, OUT, MIDI_OUT,
+      ACTIVE, MODE, ENTER_THRESHOLD, LEAVE_THRESHOLD, PRE_SILENCE, PRE_SILENCE_UNITS,
+      SYNC_BPM, HOST_TEMPO, TEMPO, DIVISION, MAX_DURATION, HALF_SPEED, DOUBLE_SPEED,
+      ATTACK, SHAPE, DEPTH, VOLUME, OUT_TEST, PLUGIN_PORT_COUNT};
 
 enum {NONE, WAITING_THRESHOLD, FIRST_PERIOD, EFFECT, OUTING};
 
@@ -97,7 +98,10 @@ public:
     
     float *in;
     float *sidechain;
+    const LV2_Atom_Sequence *ctrl_in;
+    const LV2_Atom_Sequence *midi_in;
     float *out;
+    LV2_Atom_Sequence *midi_out;
     float *active;
     float *mode;
     float *enter_threshold;
@@ -116,9 +120,6 @@ public:
     float *depth;
     float *volume;
     float *out_test;
-    const LV2_Atom_Sequence *ctrl_in;
-    const LV2_Atom_Sequence *midi_in;
-    LV2_Atom_Sequence *midi_out;
     
     double samplerate;
     int period_count;
@@ -680,8 +681,17 @@ void Ramp::connect_port(LV2_Handle instance, uint32_t port, void *data)
         case SIDECHAIN:
             plugin->sidechain = (float*) data;
             break;
+        case CTRL_IN:
+            plugin->ctrl_in = (const LV2_Atom_Sequence*) data;
+            break;
+        case MIDI_IN:
+            plugin->midi_in = (const LV2_Atom_Sequence*) data;
+            break;
         case OUT:
             plugin->out = (float*) data;
+            break;
+        case MIDI_OUT:
+            plugin->midi_out = (LV2_Atom_Sequence*) data;
             break;
         case ACTIVE:
             plugin->active = (float*) data;
@@ -736,15 +746,6 @@ void Ramp::connect_port(LV2_Handle instance, uint32_t port, void *data)
             break;
         case OUT_TEST:
             plugin->out_test = (float*) data;
-            break;
-        case CTRL_IN:
-            plugin->ctrl_in = (const LV2_Atom_Sequence*) data;
-            break;
-        case MIDI_IN:
-            plugin->midi_in = (const LV2_Atom_Sequence*) data;
-            break;
-        case MIDI_OUT:
-            plugin->midi_out = (LV2_Atom_Sequence*) data;
             break;
     }
 }
