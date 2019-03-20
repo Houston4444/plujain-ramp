@@ -89,7 +89,7 @@ public:
     float get_tempo();
     float get_division();
     int get_period_length();
-    void set_current_duration();
+    void set_period_death();
     void start_period();
     void start_first_period();
     float get_fall_period_factor();
@@ -123,13 +123,15 @@ public:
     double samplerate;
     int period_count;
     int period_length;
-    int current_duration;
-    int fade_in;
+    int period_death;
+    int period_peak;
     int default_fade;
+    
+    uint32_t running_step;
     
     bool ex_active_state;
     bool next_is_active;
-    uint32_t running_step;
+    
     bool deactivate_ordered;
     float current_shape;
     float current_depth;
@@ -137,7 +139,6 @@ public:
     float ex_volume;
     float last_global_factor;
     bool has_pre_start;
-    float random_catching;
     int n_period;
     bool ternary;
     int taken_by_groove;
@@ -191,7 +192,7 @@ LV2_Handle Ramp::instantiate(const LV2_Descriptor* descriptor, double samplerate
     
     plugin->period_count = 0;
     plugin->period_length = 12000;
-    plugin->current_duration = 12000;
+    plugin->period_death = 12000;
     plugin->next_is_active = false;
     plugin->ex_active_state = false;
     
@@ -204,7 +205,6 @@ LV2_Handle Ramp::instantiate(const LV2_Descriptor* descriptor, double samplerate
     plugin->ex_volume = 1.0f;
     plugin->last_global_factor = 1.0f;
     plugin->has_pre_start = false;
-    plugin->random_catching = 0.0f;
     plugin->n_period = 1;
     plugin->taken_by_groove = 0;
     
@@ -332,7 +332,8 @@ bool Ramp::mode_mute()
     if (plugin_mode == MODE_ACTIVE_MUTE
         or plugin_mode == MODE_IN_MUTE
         or plugin_mode == MODE_SIDECHAIN_MUTE
-        or plugin_mode == MODE_HOST_TRANSPORT_MUTE){
+        or plugin_mode == MODE_HOST_TRANSPORT_MUTE
+        or plugin_mode == MODE_MIDI_IN_MUTE){
             return true;
     }
     
@@ -465,7 +466,7 @@ int Ramp::get_period_length()
     return tmp_period_length;
 }
 
-void Ramp::set_current_duration()
+void Ramp::set_period_death()
 {
     float tempo_now = get_tempo();
     
@@ -476,7 +477,7 @@ void Ramp::set_current_duration()
         tmp_duration = period_length;
     }
     
-    current_duration = tmp_duration;
+    period_death = tmp_duration;
 }
 
 
@@ -491,12 +492,12 @@ void Ramp::start_period()
     }
     
     period_length = get_period_length();
-    set_current_duration();
+    set_period_death();
     
-    fade_in = (float(*attack) * float(samplerate)) / 1000;
+    period_peak = (float(*attack) * float(samplerate)) / 1000;
             
-    if (fade_in >= current_duration - default_fade){
-        fade_in = current_duration - default_fade;
+    if (period_peak >= period_death - default_fade){
+        period_peak = period_death - default_fade;
     }
     
     ex_volume = current_volume;
@@ -513,17 +514,17 @@ void Ramp::start_first_period()
     
     float tempo_now = get_tempo();
     
-    if (int(*pre_silence) == 0){
+    if (int(*pre_silence) < 1){
         has_pre_start = false;
         period_length = get_period_length();
     } else { 
         has_pre_start = true;
         period_length = int(*pre_silence) * int(
-            (float(60.0f / tempo_now) * float(samplerate)) / *pre_silence_units);
+            (float(60.0f / tempo_now) * float(samplerate)) / float(*pre_silence_units));
     }
     
-    if (fade_in >= current_duration - default_fade){
-        fade_in = current_duration - default_fade;
+    if (period_peak >= period_death - default_fade){
+        period_peak = period_death - default_fade;
     }
     
     if (mode_mute() and ! has_pre_start){
@@ -539,15 +540,15 @@ void Ramp::start_first_period()
 
 float Ramp::get_fall_period_factor()
 {
-    if (period_count > current_duration){
+    if (period_count > period_death){
         return 0.0f;
     }
     
     float period_factor = 1.0f;
-    int n_max = (current_duration - fade_in) / default_fade;
+    int n_max = (period_death - period_peak) / default_fade;
                     
-    float pre_factor = 1.00f - float(period_count - fade_in) 
-                       / (float(current_duration - fade_in));
+    float pre_factor = 1.00f - float(period_count - period_peak) 
+                       / (float(period_death - period_peak));
     float shape = current_shape;
     
     if (n_max < 1){
@@ -593,8 +594,8 @@ void Ramp::send_midi_start_stop(bool start)
     if (!start){
         msg[0] = 0xfc;
     }
-    msg[1] = 57;
-    msg[2] = 120;
+    msg[1] = 0;
+    msg[2] = 0;
     
     if (0 == lv2_atom_forge_frame_time (&forge, 0)) return;
 	if (0 == lv2_atom_forge_raw (&forge, &midiatom, sizeof (LV2_Atom))) return;
@@ -723,6 +724,7 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
 		ev = lv2_atom_sequence_next (ev);
 	}
 	
+	/* check midi input start/stop signal */
 	if (plugin->mode_midi_in()){
         LV2_Atom_Event const* midi_ev = (LV2_Atom_Event const*)((uintptr_t)((&(plugin->midi_in)->body) + 1)); // lv2_atom_sequence_begin
         while( // !lv2_atom_sequence_is_end
@@ -795,7 +797,7 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
     bool node_found = false;
     
     if (plugin->running_step == WAITING_THRESHOLD){
-        /* Search attack sample, prefer node (0.0f) before threshold */
+        /* Search attack sample */
         bool up = true;
         
         for ( uint32_t i = 0; i < n_samples; i++)
@@ -838,6 +840,7 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
 //         }
         
         if (attack_sample > 0){
+            /* if there is an attack_sample found, prefer node (0.0f) before in the buffer limit */
             for ( int j = attack_sample-1; j >= 0; j--)
             {
                 float value;
@@ -894,12 +897,12 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
                 break;
                 
             case FIRST_PERIOD:
-                if (plugin->period_count < plugin->fade_in){
-                    if (plugin->fade_in <= (2 * plugin->default_fade)){
+                if (plugin->period_count < plugin->period_peak){
+                    if (plugin->period_peak <= (2 * plugin->default_fade)){
                         /* No fade in in this case, just adapt volume */
                         period_factor = 1;
                         v = 1 + ((plugin->current_volume -1) \
-                                * float(plugin->period_count)/float(plugin->fade_in));
+                                * float(plugin->period_count)/float(plugin->period_peak));
                         
                     } else if (plugin->period_count <= plugin->default_fade){
                         v = 1;
@@ -908,7 +911,7 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
                         
                     } else {
                         period_factor = float(plugin->period_count - plugin->default_fade) \
-                                        / float(plugin->fade_in - plugin->default_fade);
+                                        / float(plugin->period_peak - plugin->default_fade);
                     }
                 } else {
                     period_factor = plugin->get_fall_period_factor();
@@ -922,20 +925,20 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
                 break;
                 
             case EFFECT:
-                if (plugin->period_count < plugin->fade_in){
-                    period_factor = float(plugin->period_count)/float(plugin->fade_in);
+                if (plugin->period_count < plugin->period_peak){
+                    period_factor = float(plugin->period_count)/float(plugin->period_peak);
                     v = plugin->ex_volume + period_factor * (plugin->current_volume - plugin->ex_volume);
                          
                 } else {
-                    if (plugin->period_count == plugin->fade_in){
+                    if (plugin->period_count == plugin->period_peak){
                         plugin->current_shape = float(*plugin->shape);
                         plugin->current_depth = float(*plugin->depth);
                         
                         int tmp_period_length = plugin->get_period_length();
-                        if (tmp_period_length >= (plugin->fade_in + plugin->default_fade)){
+                        if (tmp_period_length >= (plugin->period_peak + plugin->default_fade)){
                             plugin->period_length = tmp_period_length;
                         }
-                        plugin->set_current_duration();
+                        plugin->set_period_death();
                     }
                     
                     period_factor = plugin->get_fall_period_factor();
