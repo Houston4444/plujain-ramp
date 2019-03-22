@@ -657,12 +657,18 @@ void Ramp::send_midi_start_stop(bool start)
     midiatom.size = 3;
     
     uint8_t msg[3];
-    msg[0] = 0xfa;
+//     msg[0] = 0xfa;
+//     if (!start){
+//         msg[0] = 0xfc;
+//     }
+//     msg[1] = 0;
+//     msg[2] = 0;
+    msg[0] = 0x90;
+    msg[1] = 40;
     if (!start){
-        msg[0] = 0xfc;
+        msg[1] = 41;
     }
-    msg[1] = 0;
-    msg[2] = 0;
+    msg[2] = 0x64;
     
     if (0 == lv2_atom_forge_frame_time (&forge, 0)) return;
 	if (0 == lv2_atom_forge_raw (&forge, &midiatom, sizeof (LV2_Atom))) return;
@@ -823,19 +829,35 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
     //                 
     //                 printf ("\n");
     // #endif
-                    if (((const uint8_t*)(midi_ev+1))[0] == 0xfa){
+//                     if (((const uint8_t*)(midi_ev+1))[0] == 0xfa){
+//     //                     if (plugin->running_step < FIRST_PERIOD){
+//     //                         std::cout << "masasaq" << std::endl;
+//                             lv2_log_error (&plugin->logger,
+//                                 "Ramp.lv2 error: START midi:map\n");
+//                             plugin->start_first_period();
+//     //                     }
+//                     } else if (((const uint8_t*)(midi_ev+1))[0] == 0xfc){
+//                         if (plugin->running_step == EFFECT){
+//     //                         plugin->running_step = OUTING;
+// //                             plugin->next_is_active = false;
+//                             ;
+//     //                         std::cout <<"tu vois la cleaq" << std::endl;
+//                         }
+//                     }
+                    if (((const uint8_t*)(midi_ev+1))[0] == 0x90){
+                        if (((const uint8_t*)(midi_ev+1))[1] == 40){
     //                     if (plugin->running_step < FIRST_PERIOD){
     //                         std::cout << "masasaq" << std::endl;
                             lv2_log_error (&plugin->logger,
                                 "Ramp.lv2 error: START midi:map\n");
                             plugin->start_first_period();
-    //                     }
-                    } else if (((const uint8_t*)(midi_ev+1))[0] == 0xfc){
-                        if (plugin->running_step == EFFECT){
+                        } else if (((const uint8_t*)(midi_ev+1))[1] == 41){
+                            if (plugin->running_step == EFFECT){
     //                         plugin->running_step = OUTING;
 //                             plugin->next_is_active = false;
                             ;
     //                         std::cout <<"tu vois la cleaq" << std::endl;
+                            }
                         }
                     }
                 }
