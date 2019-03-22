@@ -16,7 +16,7 @@
 /**********************************************************************************************************************************************************/
 
 #define PLUGIN_URI "http://plujain/plugins/ramp"
-enum {IN, SIDECHAIN, CTRL_IN, MIDI_IN, OUT, MIDI_OUT,
+enum {IN, SIDECHAIN, CTRL_IN, OUT, MIDI_OUT,
       ACTIVE, MODE, ENTER_THRESHOLD, LEAVE_THRESHOLD, PRE_SILENCE, PRE_SILENCE_UNITS,
       SYNC_BPM, HOST_TEMPO, TEMPO, DIVISION, MAX_DURATION, HALF_SPEED, DOUBLE_SPEED,
       ATTACK, SHAPE, DEPTH, VOLUME, OUT_TEST, PLUGIN_PORT_COUNT};
@@ -99,7 +99,7 @@ public:
     float *in;
     float *sidechain;
     const LV2_Atom_Sequence *ctrl_in;
-    const LV2_Atom_Sequence *midi_in;
+//     const LV2_Atom_Sequence *midi_in;
     float *out;
     LV2_Atom_Sequence *midi_out;
     float *active;
@@ -657,18 +657,18 @@ void Ramp::send_midi_start_stop(bool start)
     midiatom.size = 3;
     
     uint8_t msg[3];
-//     msg[0] = 0xfa;
-//     if (!start){
-//         msg[0] = 0xfc;
-//     }
-//     msg[1] = 0;
-//     msg[2] = 0;
-    msg[0] = 0x90;
-    msg[1] = 40;
+    msg[0] = 0xfa;
     if (!start){
-        msg[1] = 41;
+        msg[0] = 0xfc;
     }
-    msg[2] = 0x64;
+    msg[1] = 0;
+    msg[2] = 0;
+//     msg[0] = 0x90;
+//     msg[1] = 40;
+//     if (!start){
+//         msg[1] = 41;
+//     }
+//     msg[2] = 0x64;
     
     if (0 == lv2_atom_forge_frame_time (&forge, 0)) return;
 	if (0 == lv2_atom_forge_raw (&forge, &midiatom, sizeof (LV2_Atom))) return;
@@ -708,9 +708,9 @@ void Ramp::connect_port(LV2_Handle instance, uint32_t port, void *data)
         case CTRL_IN:
             plugin->ctrl_in = (const LV2_Atom_Sequence*) data;
             break;
-        case MIDI_IN:
-            plugin->midi_in = (const LV2_Atom_Sequence*) data;
-            break;
+//         case MIDI_IN:
+//             plugin->midi_in = (const LV2_Atom_Sequence*) data;
+//             break;
         case OUT:
             plugin->out = (float*) data;
             break;
@@ -816,9 +816,9 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
 	/* check midi input start/stop signal */
     if (*plugin->active > 0.5f){
         if (plugin->mode_midi_in()){
-            LV2_Atom_Event const* midi_ev = (LV2_Atom_Event const*)((uintptr_t)((&(plugin->midi_in)->body) + 1)); // lv2_atom_sequence_begin
+            LV2_Atom_Event const* midi_ev = (LV2_Atom_Event const*)((uintptr_t)((&(plugin->ctrl_in)->body) + 1)); // lv2_atom_sequence_begin
             while( // !lv2_atom_sequence_is_end
-                (const uint8_t*)midi_ev < ((const uint8_t*) &(plugin->midi_in)->body + (plugin->midi_in)->atom.size)
+                (const uint8_t*)midi_ev < ((const uint8_t*) &(plugin->ctrl_in)->body + (plugin->ctrl_in)->atom.size)
                 ){
                 if (midi_ev->body.type == plugin->uris.midi_MidiEvent) {
     // #ifdef DEBUG_MIDI_EVENT // debug midi messages -- not rt-safe(!)
@@ -829,37 +829,37 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
     //                 
     //                 printf ("\n");
     // #endif
-//                     if (((const uint8_t*)(midi_ev+1))[0] == 0xfa){
-//     //                     if (plugin->running_step < FIRST_PERIOD){
-//     //                         std::cout << "masasaq" << std::endl;
-//                             lv2_log_error (&plugin->logger,
-//                                 "Ramp.lv2 error: START midi:map\n");
-//                             plugin->start_first_period();
-//     //                     }
-//                     } else if (((const uint8_t*)(midi_ev+1))[0] == 0xfc){
-//                         if (plugin->running_step == EFFECT){
-//     //                         plugin->running_step = OUTING;
-// //                             plugin->next_is_active = false;
-//                             ;
-//     //                         std::cout <<"tu vois la cleaq" << std::endl;
-//                         }
-//                     }
-                    if (((const uint8_t*)(midi_ev+1))[0] == 0x90){
-                        if (((const uint8_t*)(midi_ev+1))[1] == 40){
+                    if (((const uint8_t*)(midi_ev+1))[0] == 0xfa){
     //                     if (plugin->running_step < FIRST_PERIOD){
     //                         std::cout << "masasaq" << std::endl;
                             lv2_log_error (&plugin->logger,
                                 "Ramp.lv2 error: START midi:map\n");
                             plugin->start_first_period();
-                        } else if (((const uint8_t*)(midi_ev+1))[1] == 41){
-                            if (plugin->running_step == EFFECT){
+    //                     }
+                    } else if (((const uint8_t*)(midi_ev+1))[0] == 0xfc){
+                        if (plugin->running_step == EFFECT){
     //                         plugin->running_step = OUTING;
 //                             plugin->next_is_active = false;
                             ;
     //                         std::cout <<"tu vois la cleaq" << std::endl;
-                            }
                         }
                     }
+//                     if (((const uint8_t*)(midi_ev+1))[0] == 0x90){
+//                         if (((const uint8_t*)(midi_ev+1))[1] == 40){
+//     //                     if (plugin->running_step < FIRST_PERIOD){
+//     //                         std::cout << "masasaq" << std::endl;
+//                             lv2_log_error (&plugin->logger,
+//                                 "Ramp.lv2 error: START midi:map\n");
+//                             plugin->start_first_period();
+//                         } else if (((const uint8_t*)(midi_ev+1))[1] == 41){
+//                             if (plugin->running_step == EFFECT){
+//     //                         plugin->running_step = OUTING;
+// //                             plugin->next_is_active = false;
+//                             ;
+//     //                         std::cout <<"tu vois la cleaq" << std::endl;
+//                             }
+//                         }
+//                     }
                 }
                 midi_ev = (LV2_Atom_Event const*) // lv2_atom_sequence_next()
                     ((uintptr_t)((const uint8_t*)midi_ev + sizeof(LV2_Atom_Event) + ((midi_ev->body.size + 7) & ~7)));
