@@ -58,8 +58,8 @@ lv2:port
     atom:supports time:Position;
     atom:supports midi:MidiEvent;
     lv2:index 2;
-    lv2:symbol "ctrl_in";
-    lv2:name "Control In";
+    lv2:symbol "midi_in";
+    lv2:name "Midi In";
 ],
 [
     a lv2:AudioPort, lv2:OutputPort;
