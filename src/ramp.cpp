@@ -21,7 +21,7 @@ enum {IN, SIDECHAIN, MIDI_IN, OUT, MIDI_OUT,
       SYNC_BPM, HOST_TEMPO, TEMPO, DIVISION, MAX_DURATION, HALF_SPEED, DOUBLE_SPEED,
       ATTACK, SHAPE, DEPTH, VOLUME, OUT_TEST, PLUGIN_PORT_COUNT};
 
-enum {BYPASS, WAITING_SIGNAL, FIRST_PERIOD, EFFECT, OUTING};
+enum {BYPASS, FIRST_WAITING_PERIOD, WAITING_SIGNAL, FIRST_PERIOD, EFFECT, OUTING};
 
 enum {MODE_ACTIVE_BP, MODE_ACTIVE_MUTE, MODE_IN_BP, MODE_IN_MUTE,
       MODE_SIDECHAIN_BP, MODE_SIDECHAIN_MUTE, MODE_HOST_TRANSPORT_BP, MODE_HOST_TRANSPORT_MUTE,
@@ -84,22 +84,21 @@ public:
     bool mode_host_transport();
     bool mode_midi_in();
     bool mode_mute();
-    void enter_effect();
     void set_running_step(uint32_t step);
+    void set_running_step(uint32_t step, uint32_t frame);
     float get_tempo();
     float get_division();
     int get_period_length();
     void set_period_death();
     void start_period();
-    void start_first_period();
-//     void start_first_period(uint32_t frame);
+    void start_first_period(uint32_t frame);
     float get_fall_period_factor();
     void send_midi_start_stop(bool start);
+    void send_midi_start_stop(bool start, uint32_t frame);
     
     float *in;
     float *sidechain;
     const LV2_Atom_Sequence *midi_in;
-//     const LV2_Atom_Sequence *midi_in;
     float *out;
     LV2_Atom_Sequence *midi_out;
     float *active;
@@ -122,26 +121,30 @@ public:
     float *out_test;
     
     double samplerate;
+    
     int period_count;
     int period_length;
     int period_death;
     int period_peak;
     int default_fade;
+    int threshold_time;
     
     uint32_t running_step;
     uint32_t current_mode;
     
     bool ex_active_state;
-    bool next_is_active;
     
     bool waiting_enter_threshold;
+    bool leave_threshold_exceeded;
+    bool stop_request;
+    
     float current_shape;
     float current_depth;
     float current_volume;
     float ex_volume;
     float ex_depth;
     float last_global_factor;
-    float last_period_factor;
+    float last_global_factor_mem;
     bool has_pre_start;
     int n_period;
     bool ternary;
@@ -240,24 +243,29 @@ LV2_Handle Ramp::instantiate(const LV2_Descriptor* descriptor, double samplerate
 {
     Ramp *plugin = new Ramp();
     
+    plugin->samplerate = samplerate;
+    
     plugin->period_count = 0;
     plugin->period_length = 12000;
     plugin->period_death = 12000;
-    plugin->next_is_active = false;
     plugin->ex_active_state = false;
     
-    plugin->default_fade = 250;
-    plugin->samplerate = samplerate;
+    plugin->default_fade = int(0.005 * samplerate);  /*  5ms */
+    plugin->threshold_time = int(0.05 * samplerate); /* 50ms */
     
     plugin->running_step = WAITING_SIGNAL;
     plugin->current_mode = MODE_ACTIVE_BP;
-    plugin->waiting_enter_threshold = false;
+    
+    plugin->waiting_enter_threshold = true;
+    plugin->leave_threshold_exceeded = false;
+    plugin->stop_request = false;
+    
     plugin->current_volume = 1.0f;
     plugin->current_depth = 1.0f;
     plugin->ex_volume = 1.0f;
     plugin->ex_depth = 1.0f;
     plugin->last_global_factor = 1.0f;
-    plugin->last_period_factor = 0.0f;
+    plugin->last_global_factor_mem = 1.0f;
     plugin->has_pre_start = false;
     plugin->n_period = 1;
     plugin->taken_by_groove = 0;
@@ -451,46 +459,46 @@ bool Ramp::mode_mute()
 }
 
 
-void Ramp::enter_effect()
+void Ramp::set_running_step(uint32_t step, uint32_t frame)
 {
-    if (mode_direct_active()){
-        start_first_period();
-    } else {
-        current_volume = 1.0f;
-        running_step = WAITING_SIGNAL;
-        start_period();
-    }
-}
-
-
-void Ramp::set_running_step(uint32_t step)
-{
+    last_global_factor_mem = last_global_factor;
+    stop_request = false;
+    running_step = step;
+    std::cout << "running_step" << std::endl;
+    std::cout << step << std::endl;
+    std::cout << waiting_enter_threshold << std::endl;
     switch(step)
     {
         case BYPASS:
-            running_step = BYPASS;
             current_volume = 1;
             current_depth = 0;
             break;
+        case FIRST_WAITING_PERIOD:
+            period_count = 0;
+            period_length = default_fade;
+            waiting_enter_threshold = true;
+            break;
         case WAITING_SIGNAL:
-            running_step = WAITING_SIGNAL;
             period_count = 0;
             period_length = default_fade;
             break;
         case FIRST_PERIOD:
-            running_step = FIRST_PERIOD;
-            start_first_period();
+            start_first_period(frame);
             break;
         case EFFECT:
-            running_step = EFFECT;
             start_period();
             break;
         case OUTING:
             period_count = 0;
-            running_step = OUTING;
+            waiting_enter_threshold = false;
             send_midi_start_stop(false);
             break;
     }
+}
+
+void Ramp::set_running_step(uint32_t step)
+{
+    set_running_step(step, 0);
 }
 
 
@@ -590,8 +598,8 @@ int Ramp::get_period_length()
         }
     }
     
-    if (tmp_period_length < 2400){
-        tmp_period_length = 2400;
+    if (tmp_period_length < threshold_time){
+        tmp_period_length = threshold_time;
     }
     
     return tmp_period_length;
@@ -641,7 +649,7 @@ void Ramp::start_period()
 }
 
 
-void Ramp::start_first_period()
+void Ramp::start_first_period(uint32_t frame)
 {
     n_period = 1;
     start_period();
@@ -669,7 +677,9 @@ void Ramp::start_first_period()
         period_peak = period_death - default_fade;
     }
     
-    send_midi_start_stop(true);
+    send_midi_start_stop(true, frame);
+    
+    waiting_enter_threshold = false;
 }
 
 float Ramp::get_fall_period_factor()
@@ -717,7 +727,7 @@ float Ramp::get_fall_period_factor()
 }
 
 
-void Ramp::send_midi_start_stop(bool start)
+void Ramp::send_midi_start_stop(bool start, uint32_t frame)
 {
     LV2_Atom midiatom;
     midiatom.type = uris.midi_MidiEvent;
@@ -731,14 +741,16 @@ void Ramp::send_midi_start_stop(bool start)
     msg[1] = 0;
     msg[2] = 0;
     
-    uint32_t frame = 0;
-    
     if (0 == lv2_atom_forge_frame_time (&forge, frame)) return;
 	if (0 == lv2_atom_forge_raw (&forge, &midiatom, sizeof (LV2_Atom))) return;
 	if (0 == lv2_atom_forge_raw (&forge, msg, 3)) return;
     lv2_atom_forge_pad (&forge, sizeof (LV2_Atom) + 3);
 }
 
+void Ramp::send_midi_start_stop(bool start)
+{
+    send_midi_start_stop(start, 0);
+}
 
 
 /**********************************************************************************************************************************************************/
@@ -758,7 +770,7 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
             if (plugin->mode_direct_active()){
                 plugin->set_running_step(FIRST_PERIOD);
             } else {
-                plugin->set_running_step(WAITING_SIGNAL);
+                plugin->set_running_step(FIRST_WAITING_PERIOD);
             }
         }
     }
@@ -784,23 +796,27 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
 	
 	/* check midi input start/stop signal */
     if (active_state){
-        if (plugin->mode_midi_in()){
-            LV2_Atom_Event const* midi_ev = (LV2_Atom_Event const*)((uintptr_t)((&(plugin->midi_in)->body) + 1)); // lv2_atom_sequence_begin
-            while( // !lv2_atom_sequence_is_end
-                (const uint8_t*)midi_ev < ((const uint8_t*) &(plugin->midi_in)->body + (plugin->midi_in)->atom.size)
-                ){
-                if (midi_ev->body.type == plugin->uris.midi_MidiEvent) {
-                    if (((const uint8_t*)(midi_ev+1))[0] == 0xfa){
-                        start_sample = int(midi_ev->time.frames);
-                    } else if (((const uint8_t*)(midi_ev+1))[0] == 0xfc){
-                        if (plugin->running_step == EFFECT){
-                            plugin->next_is_active = false;
-                        }
-                    }
+        LV2_Atom_Event const* midi_ev = (LV2_Atom_Event const*)((uintptr_t)((&(plugin->midi_in)->body) + 1)); // lv2_atom_sequence_begin
+        while( // !lv2_atom_sequence_is_end
+            (const uint8_t*)midi_ev < ((const uint8_t*) &(plugin->midi_in)->body + (plugin->midi_in)->atom.size)
+            ){
+            if (midi_ev->body.type == plugin->uris.midi_MidiEvent) {
+                uint32_t frame = uint32_t(midi_ev->time.frames);
+                
+                if (((const uint8_t*)(midi_ev+1))[0] == 0xfa){
+                    start_sample = int(frame);
+//                     plugin->send_midi_start_stop(true, frame);
+                } else if (((const uint8_t*)(midi_ev+1))[0] == 0xfc){
+//                     if (plugin->running_step == EFFECT){
+//                         plugin->next_is_active = false;
+//                     }
+//                     stop_sample = int(frame);
+                    plugin->stop_request = true;
+                    plugin->send_midi_start_stop(false, frame);
                 }
-                midi_ev = (LV2_Atom_Event const*) // lv2_atom_sequence_next()
-                    ((uintptr_t)((const uint8_t*)midi_ev + sizeof(LV2_Atom_Event) + ((midi_ev->body.size + 7) & ~7)));
             }
+            midi_ev = (LV2_Atom_Event const*) // lv2_atom_sequence_next()
+                ((uintptr_t)((const uint8_t*)midi_ev + sizeof(LV2_Atom_Event) + ((midi_ev->body.size + 7) & ~7)));
         }
     }
     
@@ -820,7 +836,7 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
         if (plugin->mode_direct_active()){
             plugin->set_running_step(FIRST_PERIOD);
         } else {
-            plugin->set_running_step(WAITING_SIGNAL);
+            plugin->set_running_step(FIRST_WAITING_PERIOD);
         }
     }
     
@@ -840,7 +856,8 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
     
     bool node_found = false;
     
-    if (plugin->running_step == WAITING_SIGNAL
+    if (active_state 
+        and plugin->waiting_enter_threshold
         and (plugin->mode_threshold_in()
              or plugin->mode_threshold_sidechain())){
         /* Search attack sample */
@@ -896,7 +913,7 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
         float d = plugin->current_depth;
         
         if (start_sample == int(i)){
-            plugin->set_running_step(FIRST_PERIOD);
+            plugin->set_running_step(FIRST_PERIOD, i);
         }
         
         switch(plugin->running_step)
@@ -904,34 +921,56 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
             case BYPASS:
                 period_factor = 1.0f;
                 v = 1.0f;
-                d = 1.0f;
+                d = 0.0f;
+                break;
+                
+            case FIRST_WAITING_PERIOD:
+//                 period_factor = 1 - plugin->period_count/float(plugin->period_length);
+// //                 d = plugin->current_depth;
+// //                 v = plugin->current_volume;
+                v = 1;
+                d = 1;
+                period_factor = plugin->last_global_factor_mem
+                                - (plugin->last_global_factor_mem
+                                    - (1 - plugin->current_depth) * plugin->current_volume)
+                                  * plugin->period_count/float(plugin->period_length);
                 break;
                 
             case WAITING_SIGNAL:
                 period_factor = 0;
                 d = plugin->ex_depth \
-                    + (plugin->period_count/float(plugin->period_length))
-                        * (plugin->current_depth - plugin->ex_depth);
+                    + plugin->period_count/float(plugin->period_length) \
+                      * (plugin->current_depth - plugin->ex_depth);
                         
                 v = plugin->ex_volume \
-                    + (plugin->period_count/float(plugin->period_length))
-                        * (plugin->current_volume - plugin->ex_volume);
+                    + plugin->period_count/float(plugin->period_length) \
+                      * (plugin->current_volume - plugin->ex_volume);
                 break;
                 
             case FIRST_PERIOD:
-                if (plugin->mode_direct_active()){
+                if (not plugin->has_pre_start
+                        or plugin->mode_direct_active()
+                        or plugin->mode_threshold_in()
+                        or plugin->mode_threshold_sidechain()){
                     if (plugin->period_count < plugin->period_peak){
                         if (plugin->period_peak <= (2 * plugin->default_fade)){
-                            /* No fade in in this case, just adapt volume */
-                            period_factor = 1;
-                            v = 1 + ((plugin->current_volume -1) \
-                                    * float(plugin->period_count)/float(plugin->period_peak));
-                            
-                        } else if (plugin->period_count <= plugin->default_fade){
+                            /* fade from last_global_factor_mem to peak */
                             v = 1;
-                            period_factor = 1 - (float(plugin->period_count) \
-                                                /float(plugin->default_fade));
-                            
+                            d = 1;
+                            period_factor = plugin->last_global_factor_mem
+                                            + (plugin->period_count/float(plugin->period_peak))
+                                                * (plugin->current_volume
+                                                    - plugin->last_global_factor_mem);
+                                                
+                        } else if (plugin->period_count <= plugin->default_fade){
+                            /* fade from last_global_factor_mem to the down point */
+                            v = 1;
+                            d = 1;
+                            period_factor = plugin->last_global_factor_mem
+                                            - (plugin->last_global_factor_mem
+                                                - (1 - plugin->current_depth) * plugin->current_volume)
+                                                * plugin->period_count/float(plugin->default_fade);
+                                                
                         } else {
                             period_factor = float(plugin->period_count - plugin->default_fade) \
                                             / float(plugin->period_peak - plugin->default_fade);
@@ -939,19 +978,16 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
                     } else {
                         period_factor = plugin->get_fall_period_factor();
                     }
-                } else if (plugin->has_pre_start){
+                } else {
                     if (plugin->period_count < plugin->default_fade){
-                        period_factor = (1 - plugin->period_count/float(plugin->default_fade)) \
-                                        * plugin->last_period_factor;
+                        v = 1;
+                        d = 1;
+                        period_factor = plugin->last_global_factor_mem
+                                        - (plugin->last_global_factor_mem
+                                            - (1 - plugin->current_depth) * plugin->current_volume)
+                                            * plugin->period_count/float(plugin->default_fade);
                     } else {
                         period_factor = 0;
-                    }
-                } else {
-                    if (plugin->period_count <= plugin->default_fade){
-                        period_factor = (1 - plugin->period_count/float(plugin->default_fade)) \
-                                        * plugin->last_period_factor;
-                    } else {
-                        period_factor = plugin->get_fall_period_factor();
                     }
                 }
                 break;
@@ -959,7 +995,8 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
             case EFFECT:
                 if (plugin->period_count < plugin->period_peak){
                     period_factor = float(plugin->period_count)/float(plugin->period_peak);
-                    v = plugin->ex_volume + period_factor * (plugin->current_volume - plugin->ex_volume);
+                    v = plugin->ex_volume
+                        + period_factor * (plugin->current_volume - plugin->ex_volume);
                          
                 } else {
                     if (plugin->period_count == plugin->period_peak){
@@ -978,70 +1015,51 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
                 break;
                 
             case OUTING:
-                if (*plugin->active < 0.5f
-                        and plugin->period_count <= plugin->default_fade){
-//                     period_factor = float(plugin->period_count)/float(plugin->default_fade) \
-//                                     * (1 - plugin->last_global_factor) + plugin->last_global_factor;
-                    period_factor = plugin->last_global_factor \
-                                    + (plugin->period_count/float(plugin->default_fade)) \
-                                      * (1 - plugin->last_global_factor);
+                if (plugin->period_count < plugin->default_fade){
                     v = 1;
                     d = 1;
-                    
-                    if (plugin->period_count +1 == plugin->default_fade){
-                        plugin->set_running_step(BYPASS);
-                    }
+                    period_factor = plugin->last_global_factor_mem \
+                                    + (plugin->period_count/float(plugin->default_fade)) \
+                                      * (1 - plugin->last_global_factor_mem);
+                } else {
+                    plugin->set_running_step(BYPASS);
                 }
-                    
                 break;
         }
         
-        float global_factor = (1 - (1-period_factor) * d) * v;
-        plugin->out[i] = plugin->in[i] * global_factor;
-        plugin->out_test[i] = global_factor -0.5;
-        
-        if (plugin->running_step != OUTING){
-            plugin->last_global_factor = global_factor;
-        }
-        
-        if (plugin->running_step != FIRST_PERIOD){
-            plugin->last_period_factor = period_factor;
-        }
+        plugin->last_global_factor = (1 - (1-period_factor) * d) * v;
+        plugin->out[i] = plugin->in[i] * plugin->last_global_factor;
+        plugin->out_test[i] = plugin->last_global_factor -0.5;
         
         plugin->period_count++;
         
-        if (plugin->running_step >= WAITING_SIGNAL){
+        if (active_state){
             if (plugin->period_count == plugin->period_length){
-                
-                
                 if (plugin->running_step == FIRST_PERIOD){
                     plugin->set_running_step(EFFECT);
+                } else if (plugin->running_step == FIRST_WAITING_PERIOD){
+                    plugin->set_running_step(WAITING_SIGNAL);
+                }
+                
+                if (plugin->stop_request){
+                    plugin->set_running_step(WAITING_SIGNAL);
                 }
                 
                 plugin->start_period();
-                
-                if (active_state and not plugin->next_is_active){
-                    plugin->set_running_step(WAITING_SIGNAL);
-                    plugin->start_period();
-                }
-                
-                plugin->next_is_active = not bool(plugin->mode_threshold_in()
-                                                  or plugin->mode_threshold_sidechain());
+                plugin->waiting_enter_threshold = not bool(plugin->leave_threshold_exceeded);
             }
-        
-            if (plugin->mode_direct_active() or plugin->mode_host_transport()){
-                plugin->next_is_active = true;
-            } else if (plugin->mode_midi_in()){
-                ;
-            } else {
-                if (plugin->period_count > (plugin->period_length -2400)
-                    and ! plugin->next_is_active
-                    and ((plugin->mode_threshold_in()
-                            and abs(plugin->in[i] >= leave_threshold))
-                        or (plugin->mode_threshold_sidechain()
-                            and abs(plugin->sidechain[i] >= leave_threshold)))){
-                            plugin->next_is_active = true;
-                }
+                
+            if (plugin->period_count == (plugin->period_length - plugin->threshold_time)){
+                plugin->leave_threshold_exceeded = false;
+            }
+
+            if (plugin->period_count > (plugin->period_length - plugin->threshold_time)
+                and ! plugin->leave_threshold_exceeded
+                and ((plugin->mode_threshold_in()
+                        and abs(plugin->in[i] >= leave_threshold))
+                    or (plugin->mode_threshold_sidechain()
+                        and abs(plugin->sidechain[i] >= leave_threshold)))){
+                            plugin->leave_threshold_exceeded = true;
             }
         }
     }
