@@ -17,7 +17,7 @@
 
 #define PLUGIN_URI "http://plujain/plugins/ramp"
 enum {IN, MIDI_IN, OUT, MIDI_OUT,
-      ACTIVE, MODE, ENTER_THRESHOLD, LEAVE_THRESHOLD, PRE_SILENCE, PRE_SILENCE_UNITS,
+      ACTIVE, MODE, ENTER_THRESHOLD, LEAVE_THRESHOLD, PRE_START, PRE_START_UNITS,
       SYNC_BPM, HOST_TEMPO, TEMPO, DIVISION, MAX_DURATION, HALF_SPEED, DOUBLE_SPEED,
       ATTACK, SHAPE, DEPTH, VOLUME, PLUGIN_PORT_COUNT};
 
@@ -96,8 +96,8 @@ public:
     float *mode;
     float *enter_threshold;
     float *leave_threshold;
-    float *pre_silence;
-    float *pre_silence_units;
+    float *pre_start;
+    float *pre_start_units;
     float *sync_bpm;
     float *tempo;
     float *host_tempo;
@@ -332,11 +332,11 @@ void Ramp::connect_port(LV2_Handle instance, uint32_t port, void *data)
         case LEAVE_THRESHOLD:
             plugin->leave_threshold = (float*) data;
             break;
-        case PRE_SILENCE:
-            plugin->pre_silence = (float*) data;
+        case PRE_START:
+            plugin->pre_start = (float*) data;
             break;
-        case PRE_SILENCE_UNITS:
-            plugin->pre_silence_units = (float*) data;
+        case PRE_START_UNITS:
+            plugin->pre_start_units = (float*) data;
             break;
         case SYNC_BPM:
             plugin->sync_bpm = (float*) data;
@@ -570,9 +570,9 @@ void Ramp::start_first_period(uint32_t frame)
     current_depth = float(*depth);
     
     float tempo_now = get_tempo();
-    int pre_start_n = int(*pre_silence);
+    int pre_start_n = int(*pre_start);
     
-    float too_much = float(*pre_silence) - pre_start_n;
+    float too_much = float(*pre_start) - pre_start_n;
     if (too_much >= 0.5f){
         pre_start_n += 1;
     }
@@ -583,7 +583,7 @@ void Ramp::start_first_period(uint32_t frame)
     } else { 
         has_pre_start = true;
         period_length = pre_start_n * int(
-            (float(60.0f / tempo_now) * float(samplerate)) / float(*pre_silence_units));
+            (float(60.0f / tempo_now) * float(samplerate)) / float(*pre_start_units));
     }
     
     if (period_peak >= period_death - default_fade){
