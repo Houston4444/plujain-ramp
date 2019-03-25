@@ -464,9 +464,7 @@ void Ramp::set_running_step(uint32_t step, uint32_t frame)
     last_global_factor_mem = last_global_factor;
     stop_request = false;
     running_step = step;
-    std::cout << "running_step" << std::endl;
-    std::cout << step << std::endl;
-    std::cout << waiting_enter_threshold << std::endl;
+    
     switch(step)
     {
         case BYPASS:
@@ -610,7 +608,7 @@ void Ramp::set_period_death()
     float tempo_now = get_tempo();
     
     int tmp_duration = int(
-        (float(60.0f / tempo_now) * float(samplerate)) / *max_duration);
+        (float(60.0f / tempo_now) * float(samplerate)) * *max_duration);
     
     if (tmp_duration > period_length){
         tmp_duration = period_length;
@@ -919,15 +917,11 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
         switch(plugin->running_step)
         {
             case BYPASS:
-                period_factor = 1.0f;
                 v = 1.0f;
                 d = 0.0f;
                 break;
                 
             case FIRST_WAITING_PERIOD:
-//                 period_factor = 1 - plugin->period_count/float(plugin->period_length);
-// //                 d = plugin->current_depth;
-// //                 v = plugin->current_volume;
                 v = 1;
                 d = 1;
                 period_factor = plugin->last_global_factor_mem
@@ -1047,13 +1041,11 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
                 
                 plugin->start_period();
                 plugin->waiting_enter_threshold = not bool(plugin->leave_threshold_exceeded);
-            }
-                
-            if (plugin->period_count == (plugin->period_length - plugin->threshold_time)){
                 plugin->leave_threshold_exceeded = false;
             }
 
             if (plugin->period_count > (plugin->period_length - plugin->threshold_time)
+                and ! plugin->waiting_enter_threshold
                 and ! plugin->leave_threshold_exceeded
                 and ((plugin->mode_threshold_in()
                         and abs(plugin->in[i] >= leave_threshold))
