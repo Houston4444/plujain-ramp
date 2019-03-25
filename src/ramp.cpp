@@ -19,7 +19,7 @@
 enum {IN, SIDECHAIN, MIDI_IN, OUT, MIDI_OUT,
       ACTIVE, MODE, ENTER_THRESHOLD, LEAVE_THRESHOLD, PRE_SILENCE, PRE_SILENCE_UNITS,
       SYNC_BPM, HOST_TEMPO, TEMPO, DIVISION, MAX_DURATION, HALF_SPEED, DOUBLE_SPEED,
-      ATTACK, SHAPE, DEPTH, VOLUME, OUT_TEST, PLUGIN_PORT_COUNT};
+      ATTACK, SHAPE, DEPTH, VOLUME, PLUGIN_PORT_COUNT};
 
 enum {BYPASS, FIRST_WAITING_PERIOD, WAITING_SIGNAL, FIRST_PERIOD, EFFECT, OUTING};
 
@@ -118,7 +118,6 @@ public:
     float *shape;
     float *depth;
     float *volume;
-    float *out_test;
     
     double samplerate;
     
@@ -383,9 +382,6 @@ void Ramp::connect_port(LV2_Handle instance, uint32_t port, void *data)
             break;
         case VOLUME:
             plugin->volume = (float*) data;
-            break;
-        case OUT_TEST:
-            plugin->out_test = (float*) data;
             break;
     }
 }
@@ -1023,7 +1019,6 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
         
         plugin->last_global_factor = (1 - (1-period_factor) * d) * v;
         plugin->out[i] = plugin->in[i] * plugin->last_global_factor;
-        plugin->out_test[i] = plugin->last_global_factor -0.5;
         
         plugin->period_count++;
         
