@@ -16,7 +16,7 @@
 /**********************************************************************************************************************************************************/
 
 #define PLUGIN_URI "http://plujain/plugins/ramp"
-enum {IN, SIDECHAIN, MIDI_IN, OUT, MIDI_OUT,
+enum {IN, MIDI_IN, OUT, MIDI_OUT,
       ACTIVE, MODE, ENTER_THRESHOLD, LEAVE_THRESHOLD, PRE_SILENCE, PRE_SILENCE_UNITS,
       SYNC_BPM, HOST_TEMPO, TEMPO, DIVISION, MAX_DURATION, HALF_SPEED, DOUBLE_SPEED,
       ATTACK, SHAPE, DEPTH, VOLUME, PLUGIN_PORT_COUNT};
@@ -24,7 +24,7 @@ enum {IN, SIDECHAIN, MIDI_IN, OUT, MIDI_OUT,
 enum {BYPASS, FIRST_WAITING_PERIOD, WAITING_SIGNAL, FIRST_PERIOD, EFFECT, OUTING};
 
 enum {MODE_ACTIVE_BP, MODE_ACTIVE_MUTE, MODE_IN_BP, MODE_IN_MUTE,
-      MODE_SIDECHAIN_BP, MODE_SIDECHAIN_MUTE, MODE_HOST_TRANSPORT_BP, MODE_HOST_TRANSPORT_MUTE,
+      MODE_HOST_TRANSPORT_BP, MODE_HOST_TRANSPORT_MUTE,
       MODE_MIDI_IN_BP, MODE_MIDI_IN_MUTE};
 
 typedef struct {
@@ -80,7 +80,6 @@ public:
     static const void* extension_data(const char* uri);
     bool mode_direct_active();
     bool mode_threshold_in();
-    bool mode_threshold_sidechain();
     bool mode_host_transport();
     bool mode_midi_in();
     bool mode_mute();
@@ -97,7 +96,6 @@ public:
     void send_midi_start_stop(bool start, uint32_t frame);
     
     float *in;
-    float *sidechain;
     const LV2_Atom_Sequence *midi_in;
     float *out;
     LV2_Atom_Sequence *midi_out;
@@ -320,9 +318,6 @@ void Ramp::connect_port(LV2_Handle instance, uint32_t port, void *data)
         case IN:
             plugin->in = (float*) data;
             break;
-        case SIDECHAIN:
-            plugin->sidechain = (float*) data;
-            break;
         case MIDI_IN:
             plugin->midi_in = (const LV2_Atom_Sequence*) data;
             break;
@@ -409,16 +404,6 @@ bool Ramp::mode_threshold_in()
 }
 
 
-bool Ramp::mode_threshold_sidechain()
-{
-    int plugin_mode = int(*mode);
-    if (plugin_mode == MODE_SIDECHAIN_BP or plugin_mode == MODE_SIDECHAIN_MUTE){
-        return true;
-    }
-    
-    return false;
-}
-
 bool Ramp::mode_host_transport()
 {
     int plugin_mode = int(*mode);
@@ -445,7 +430,6 @@ bool Ramp::mode_mute()
     int plugin_mode = int(*mode);
     if (plugin_mode == MODE_ACTIVE_MUTE
         or plugin_mode == MODE_IN_MUTE
-        or plugin_mode == MODE_SIDECHAIN_MUTE
         or plugin_mode == MODE_HOST_TRANSPORT_MUTE
         or plugin_mode == MODE_MIDI_IN_MUTE){
             return true;
@@ -852,8 +836,7 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
     
     if (active_state 
         and plugin->waiting_enter_threshold
-        and (plugin->mode_threshold_in()
-             or plugin->mode_threshold_sidechain())){
+        and (plugin->mode_threshold_in())){
         /* Search attack sample */
         bool up = true;
         
@@ -862,8 +845,6 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
             float value;
             if (plugin->mode_threshold_in()){
                 value = plugin->in[i];
-            } else if (plugin->mode_threshold_sidechain()){
-                value = plugin->sidechain[i];
             }
             
             if (value >= enter_threshold){
@@ -880,8 +861,6 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
                 float value;
                 if (plugin->mode_threshold_in()){
                     value = plugin->in[j];
-                } else if (plugin->mode_threshold_sidechain()){
-                    value = plugin->sidechain[j];
                 } else {
                     break;
                 }
@@ -940,8 +919,7 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
             case FIRST_PERIOD:
                 if (not plugin->has_pre_start
                         or plugin->mode_direct_active()
-                        or plugin->mode_threshold_in()
-                        or plugin->mode_threshold_sidechain()){
+                        or plugin->mode_threshold_in()){
                     if (plugin->period_count < plugin->period_peak){
                         if (plugin->period_peak <= (2 * plugin->default_fade)){
                             /* fade from last_global_factor_mem to peak */
@@ -1042,11 +1020,9 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
             if (plugin->period_count > (plugin->period_length - plugin->threshold_time)
                 and ! plugin->waiting_enter_threshold
                 and ! plugin->leave_threshold_exceeded
-                and ((plugin->mode_threshold_in()
-                        and abs(plugin->in[i] >= leave_threshold))
-                    or (plugin->mode_threshold_sidechain()
-                        and abs(plugin->sidechain[i] >= leave_threshold)))){
-                            plugin->leave_threshold_exceeded = true;
+                and plugin->mode_threshold_in()
+                and abs(plugin->in[i] >= leave_threshold)){
+                    plugin->leave_threshold_exceeded = true;
             }
         }
     }
