@@ -23,9 +23,7 @@ enum {IN, MIDI_IN, OUT, MIDI_OUT,
 
 enum {BYPASS, FIRST_WAITING_PERIOD, WAITING_SIGNAL, FIRST_PERIOD, EFFECT, OUTING};
 
-enum {MODE_ACTIVE_BP, MODE_ACTIVE_MUTE, MODE_IN_BP, MODE_IN_MUTE,
-      MODE_HOST_TRANSPORT_BP, MODE_HOST_TRANSPORT_MUTE,
-      MODE_MIDI_IN_BP, MODE_MIDI_IN_MUTE};
+enum {MODE_ACTIVE, MODE_THRESHOLD, MODE_HOST_TRANSPORT, MODE_MIDI, MODE_MIDI_BYPASS};
 
 typedef struct {
 	LV2_URID atom_Blank;
@@ -78,11 +76,6 @@ public:
     static void run(LV2_Handle instance, uint32_t n_samples);
     static void cleanup(LV2_Handle instance);
     static const void* extension_data(const char* uri);
-    bool mode_direct_active();
-    bool mode_threshold_in();
-    bool mode_host_transport();
-    bool mode_midi_in();
-    bool mode_mute();
     void set_running_step(uint32_t step);
     void set_running_step(uint32_t step, uint32_t frame);
     float get_tempo();
@@ -251,7 +244,7 @@ LV2_Handle Ramp::instantiate(const LV2_Descriptor* descriptor, double samplerate
     plugin->threshold_time = int(0.05 * samplerate); /* 50ms */
     
     plugin->running_step = WAITING_SIGNAL;
-    plugin->current_mode = MODE_ACTIVE_BP;
+    plugin->current_mode = MODE_ACTIVE;
     
     plugin->waiting_enter_threshold = true;
     plugin->leave_threshold_exceeded = false;
@@ -383,62 +376,6 @@ void Ramp::connect_port(LV2_Handle instance, uint32_t port, void *data)
 
 /**********************************************************************************************************************************************************/
 
-bool Ramp::mode_direct_active()
-{
-    int plugin_mode = int(*mode);
-    if (plugin_mode == MODE_ACTIVE_BP or plugin_mode == MODE_ACTIVE_MUTE){
-        return true;
-    }
-    
-    return false;
-}
-
-bool Ramp::mode_threshold_in()
-{
-    int plugin_mode = int(*mode);
-    if (plugin_mode == MODE_IN_BP or plugin_mode == MODE_IN_MUTE){
-        return true;
-    }
-    
-    return false;
-}
-
-
-bool Ramp::mode_host_transport()
-{
-    int plugin_mode = int(*mode);
-    if (plugin_mode == MODE_HOST_TRANSPORT_BP or plugin_mode == MODE_HOST_TRANSPORT_MUTE){
-        return true;
-    }
-    
-    return false;
-}
-
-
-bool Ramp::mode_midi_in()
-{
-    int plugin_mode = int(*mode);
-    if (plugin_mode == MODE_MIDI_IN_BP or plugin_mode == MODE_MIDI_IN_MUTE){
-        return true;
-    }
-    
-    return false;
-}
-
-bool Ramp::mode_mute()
-{
-    int plugin_mode = int(*mode);
-    if (plugin_mode == MODE_ACTIVE_MUTE
-        or plugin_mode == MODE_IN_MUTE
-        or plugin_mode == MODE_HOST_TRANSPORT_MUTE
-        or plugin_mode == MODE_MIDI_IN_MUTE){
-            return true;
-    }
-    
-    return false;
-}
-
-
 void Ramp::set_running_step(uint32_t step, uint32_t frame)
 {
     last_global_factor_mem = last_global_factor;
@@ -464,7 +401,6 @@ void Ramp::set_running_step(uint32_t step, uint32_t frame)
             start_first_period(frame);
             break;
         case EFFECT:
-            start_period();
             break;
         case OUTING:
             period_count = 0;
@@ -541,7 +477,6 @@ int Ramp::get_period_length()
     }
     
     float tempo_now = get_tempo();
-    
     float tmp_division = float(get_division());
     
     if (ternary){
@@ -741,12 +676,15 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
     bool active_state = bool(*plugin->active > 0.5f);
     
     /* check mode change */
-    if (uint32_t(*plugin->mode) != plugin->current_mode){
+    if (uint32_t(*plugin->mode) != plugin->current_mode
+            or (active_state and not plugin->ex_active_state)){
         plugin->current_mode = uint32_t(*plugin->mode);
         
         if (active_state){
-            if (plugin->mode_direct_active()){
+            if (plugin->current_mode == MODE_ACTIVE){
                 plugin->set_running_step(FIRST_PERIOD);
+            } else if (plugin->current_mode == MODE_MIDI_BYPASS){
+                plugin->set_running_step(OUTING);
             } else {
                 plugin->set_running_step(FIRST_WAITING_PERIOD);
             }
@@ -783,13 +721,15 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
                 
                 if (((const uint8_t*)(midi_ev+1))[0] == 0xfa){
                     start_sample = int(frame);
-//                     plugin->send_midi_start_stop(true, frame);
                 } else if (((const uint8_t*)(midi_ev+1))[0] == 0xfc){
-//                     if (plugin->running_step == EFFECT){
-//                         plugin->next_is_active = false;
-//                     }
-//                     stop_sample = int(frame);
-                    plugin->stop_request = true;
+                    if (plugin->current_mode == MODE_MIDI_BYPASS){
+                        plugin->set_running_step(OUTING);
+                    } else if (plugin->current_mode == MODE_ACTIVE){
+                        ;
+                    } else {
+                        plugin->stop_request = true;
+                    }
+                    
                     plugin->send_midi_start_stop(false, frame);
                 }
             }
@@ -798,7 +738,7 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
         }
     }
     
-    if (active_state and plugin->mode_host_transport()){
+    if (active_state and plugin->current_mode == MODE_HOST_TRANSPORT){
         if (plugin->host_speed > 0){
             if (plugin->running_step < FIRST_PERIOD){
                 plugin->set_running_step(FIRST_PERIOD);
@@ -807,14 +747,6 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
             if (plugin->running_step == EFFECT){
                 plugin->set_running_step(OUTING);
             }
-        }
-    }
-        
-    if (active_state and not plugin->ex_active_state){
-        if (plugin->mode_direct_active()){
-            plugin->set_running_step(FIRST_PERIOD);
-        } else {
-            plugin->set_running_step(FIRST_WAITING_PERIOD);
         }
     }
     
@@ -836,16 +768,13 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
     
     if (active_state 
         and plugin->waiting_enter_threshold
-        and (plugin->mode_threshold_in())){
+        and (plugin->current_mode == MODE_THRESHOLD)){
         /* Search attack sample */
         bool up = true;
         
         for ( uint32_t i = 0; i < n_samples; i++)
         {   
-            float value;
-            if (plugin->mode_threshold_in()){
-                value = plugin->in[i];
-            }
+            float value = plugin->in[i];
             
             if (value >= enter_threshold){
                 up = bool(value >= 0.0f);
@@ -859,11 +788,7 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
             for ( int j = start_sample-1; j >= 0; j--)
             {
                 float value;
-                if (plugin->mode_threshold_in()){
-                    value = plugin->in[j];
-                } else {
-                    break;
-                }
+                value = plugin->in[j];
                 
                 if ((up and value <= 0.0f)
                     or ((! up) and value >= 0.0f)){
@@ -918,8 +843,9 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
                 
             case FIRST_PERIOD:
                 if (not plugin->has_pre_start
-                        or plugin->mode_direct_active()
-                        or plugin->mode_threshold_in()){
+                        or plugin->current_mode == MODE_ACTIVE
+                        or plugin->current_mode == MODE_THRESHOLD
+                        or plugin->current_mode == MODE_MIDI_BYPASS){
                     if (plugin->period_count < plugin->period_peak){
                         if (plugin->period_peak <= (2 * plugin->default_fade)){
                             /* fade from last_global_factor_mem to peak */
@@ -1000,19 +926,21 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
         
         plugin->period_count++;
         
-        if (active_state){
+        if (plugin->running_step != BYPASS){
             if (plugin->period_count == plugin->period_length){
                 if (plugin->running_step == FIRST_PERIOD){
                     plugin->set_running_step(EFFECT);
                 } else if (plugin->running_step == FIRST_WAITING_PERIOD){
                     plugin->set_running_step(WAITING_SIGNAL);
-                }
+                } 
+                
+                plugin->start_period();
                 
                 if (plugin->stop_request){
                     plugin->set_running_step(WAITING_SIGNAL);
                 }
                 
-                plugin->start_period();
+                
                 plugin->waiting_enter_threshold = not bool(plugin->leave_threshold_exceeded);
                 plugin->leave_threshold_exceeded = false;
             }
@@ -1020,7 +948,7 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
             if (plugin->period_count > (plugin->period_length - plugin->threshold_time)
                 and ! plugin->waiting_enter_threshold
                 and ! plugin->leave_threshold_exceeded
-                and plugin->mode_threshold_in()
+                and plugin->current_mode == MODE_THRESHOLD
                 and abs(plugin->in[i] >= leave_threshold)){
                     plugin->leave_threshold_exceeded = true;
             }
