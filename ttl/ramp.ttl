@@ -145,8 +145,18 @@ lv2:port
     lv2:maximum 8;
 ],
 [
-    a lv2:InputPort, lv2:ControlPort ;
+    a lv2:ControlPort, lv2:InputPort;
     lv2:index 10;
+    lv2:symbol "first_offset";
+    lv2:name "First Period Offset";
+#     units:unit units:db ;
+    lv2:default 0;
+    lv2:minimum -1;
+    lv2:maximum 1;
+],
+[
+    a lv2:InputPort, lv2:ControlPort ;
+    lv2:index 11;
     lv2:symbol "temposync" ;
     lv2:name "Sync Tempo" ;
     lv2:default 1 ;
@@ -158,7 +168,7 @@ lv2:port
 [
     a lv2:InputPort ;
     a lv2:ControlPort ;
-    lv2:index 11;
+    lv2:index 12;
     lv2:symbol "bpm_host" ;
     lv2:name "Host BPM" ;
     lv2:portProperty epp:hasStrictBounds ;
@@ -171,7 +181,7 @@ lv2:port
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 12;
+    lv2:index 13;
     lv2:symbol "tempo";
     lv2:name "Tempo";
 #     lv2:portProperty lv2:integer;
@@ -181,7 +191,7 @@ lv2:port
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 13;
+    lv2:index 14;
     lv2:symbol "division";
     lv2:name "Division";
     lv2:portProperty lv2:integer;
@@ -207,7 +217,7 @@ lv2:port
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 14;
+    lv2:index 15;
     lv2:symbol "max_duration";
     lv2:name "Max Duration";
         lv2:scalePoint [rdfs:label "beat/16"; rdf:value 0.0625];
@@ -229,7 +239,7 @@ lv2:port
 ],
 [
     a lv2:InputPort, lv2:ControlPort ;
-    lv2:index 15;
+    lv2:index 16;
     lv2:symbol "half_speed" ;
     lv2:name "Half Speed" ;
     lv2:default 0 ;
@@ -240,7 +250,7 @@ lv2:port
 ],
 [
     a lv2:InputPort, lv2:ControlPort ;
-    lv2:index 16;
+    lv2:index 17;
     lv2:symbol "double_speed" ;
     lv2:name "Double Speed" ;
     lv2:default 0 ;
@@ -252,7 +262,7 @@ lv2:port
 
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 17;
+    lv2:index 18;
     lv2:symbol "attack";
     lv2:name "Attack";
     lv2:default 4;
@@ -262,7 +272,7 @@ lv2:port
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 18;
+    lv2:index 19;
     lv2:symbol "shape";
     lv2:name "Shape";
     lv2:default 0;
@@ -271,7 +281,7 @@ lv2:port
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 19;
+    lv2:index 20;
     lv2:symbol "depth";
     lv2:name "Depth";
     lv2:default 1;
@@ -280,7 +290,7 @@ lv2:port
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 20;
+    lv2:index 21;
     lv2:symbol "volume";
     lv2:name "Volume";
     units:unit units:db ;

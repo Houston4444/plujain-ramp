@@ -17,7 +17,7 @@
 
 #define PLUGIN_URI "http://plujain/plugins/ramp"
 enum {IN, MIDI_IN, OUT, MIDI_OUT,
-      ACTIVE, MODE, ENTER_THRESHOLD, LEAVE_THRESHOLD, PRE_START, PRE_START_UNITS,
+      ACTIVE, MODE, ENTER_THRESHOLD, LEAVE_THRESHOLD, PRE_START, PRE_START_UNITS, FIRST_OFFSET,
       SYNC_BPM, HOST_TEMPO, TEMPO, DIVISION, MAX_DURATION, HALF_SPEED, DOUBLE_SPEED,
       ATTACK, SHAPE, DEPTH, VOLUME, PLUGIN_PORT_COUNT};
 
@@ -98,6 +98,7 @@ public:
     float *leave_threshold;
     float *pre_start;
     float *pre_start_units;
+    float *first_offset;
     float *sync_bpm;
     float *tempo;
     float *host_tempo;
@@ -337,6 +338,9 @@ void Ramp::connect_port(LV2_Handle instance, uint32_t port, void *data)
             break;
         case PRE_START_UNITS:
             plugin->pre_start_units = (float*) data;
+            break;
+        case FIRST_OFFSET:
+            plugin->first_offset = (float*) data;
             break;
         case SYNC_BPM:
             plugin->sync_bpm = (float*) data;
@@ -588,6 +592,8 @@ void Ramp::start_first_period(uint32_t frame)
         period_length = pre_start_n * int(
             (float(60.0f / tempo_now) * float(samplerate)) / float(*pre_start_units));
     }
+    
+    period_length += (float(60.0f/tempo_now) * samplerate / 8) * float(*first_offset);
     
     if (period_peak >= period_death - default_fade){
         period_peak = period_death - default_fade;
