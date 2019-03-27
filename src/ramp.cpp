@@ -17,7 +17,7 @@
 
 #define PLUGIN_URI "http://plujain/plugins/ramp"
 enum {IN, MIDI_IN, OUT, MIDI_OUT,
-      ACTIVE, MODE, ENTER_THRESHOLD, LEAVE_THRESHOLD, PRE_START, PRE_START_UNITS, FIRST_OFFSET,
+      ACTIVE, MODE, ENTER_THRESHOLD, LEAVE_THRESHOLD, PRE_START, PRE_START_UNITS, BEAT_OFFSET,
       SYNC_BPM, HOST_TEMPO, TEMPO, DIVISION, MAX_DURATION, HALF_SPEED, DOUBLE_SPEED,
       ATTACK, SHAPE, DEPTH, VOLUME, PLUGIN_PORT_COUNT};
 
@@ -98,7 +98,7 @@ public:
     float *leave_threshold;
     float *pre_start;
     float *pre_start_units;
-    float *first_offset;
+    float *beat_offset;
     float *sync_bpm;
     float *tempo;
     float *host_tempo;
@@ -119,6 +119,8 @@ public:
     int period_peak;
     int default_fade;
     int threshold_time;
+    int taken_beat_offset;
+    int current_offset;
     
     uint32_t running_step;
     uint32_t current_mode;
@@ -137,11 +139,9 @@ public:
     float last_global_factor;
     float last_global_factor_mem;
     bool has_pre_start;
-    int n_period;
+    uint8_t n_period;
     bool ternary;
     int taken_by_groove;
-    
-    
     
     /* Host Time */
 	bool     host_info;
@@ -239,6 +239,9 @@ LV2_Handle Ramp::instantiate(const LV2_Descriptor* descriptor, double samplerate
     plugin->period_count = 0;
     plugin->period_length = 12000;
     plugin->period_death = 12000;
+    plugin->taken_beat_offset = 0;
+    plugin->current_offset = 0;
+    
     plugin->ex_active_state = false;
     
     plugin->default_fade = int(0.005 * samplerate);  /*  5ms */
@@ -260,6 +263,7 @@ LV2_Handle Ramp::instantiate(const LV2_Descriptor* descriptor, double samplerate
     plugin->has_pre_start = false;
     plugin->n_period = 1;
     plugin->taken_by_groove = 0;
+    
     
     int i;
 	for (i=0; features[i]; ++i) {
@@ -339,8 +343,8 @@ void Ramp::connect_port(LV2_Handle instance, uint32_t port, void *data)
         case PRE_START_UNITS:
             plugin->pre_start_units = (float*) data;
             break;
-        case FIRST_OFFSET:
-            plugin->first_offset = (float*) data;
+        case BEAT_OFFSET:
+            plugin->beat_offset = (float*) data;
             break;
         case SYNC_BPM:
             plugin->sync_bpm = (float*) data;
@@ -405,6 +409,7 @@ void Ramp::set_running_step(uint32_t step, uint32_t frame)
             start_first_period(frame);
             break;
         case EFFECT:
+            taken_beat_offset = 0;
             break;
         case OUTING:
             period_count = 0;
@@ -476,7 +481,7 @@ float Ramp::get_division()
 
 int Ramp::get_period_length()
 {
-    if (running_step == WAITING_SIGNAL){
+    if (running_step == WAITING_SIGNAL or running_step == FIRST_WAITING_PERIOD){
         return default_fade;
     }
     
@@ -503,17 +508,33 @@ int Ramp::get_period_length()
         }
     }
     
-    int tmp_period_length = int(
-        (float(60.0f / tempo_now) * float(samplerate)) * tmp_division);
+    int tmp_period_length;
+    float tmp_pre_start = float(*pre_start);
     
-    if (ternary){
-        if (n_period == 1){
-            tmp_period_length = tmp_period_length - taken_by_groove;
-        } else {
-            taken_by_groove = int(0.33333333333 * tmp_period_length);
-            tmp_period_length = tmp_period_length + taken_by_groove;
+    if (running_step == FIRST_PERIOD and tmp_pre_start > 0.5){
+        int pre_start_n = int(tmp_pre_start);
+        if ((float(tmp_pre_start) - pre_start_n) >= 0.5f){
+            pre_start_n += 1;
+        }
+        
+        tmp_period_length =  pre_start_n
+                             * int((float(60.0f / tempo_now) * samplerate) / *pre_start_units);
+    } else {
+        tmp_period_length = int((float(60.0f / tempo_now) * float(samplerate)) * tmp_division);
+    
+        if (ternary){
+            if (n_period == 1){
+                tmp_period_length = tmp_period_length - taken_by_groove;
+            } else {
+                taken_by_groove = int(0.33333333333 * tmp_period_length);
+                tmp_period_length = tmp_period_length + taken_by_groove;
+            }
         }
     }
+    
+    current_offset = (float(60.0f/tempo_now) * samplerate * 0.125)
+                            * float(*beat_offset);
+    tmp_period_length += current_offset - taken_beat_offset;
     
     if (tmp_period_length < threshold_time){
         tmp_period_length = threshold_time;
@@ -540,6 +561,7 @@ void Ramp::set_period_death()
 void Ramp::start_period()
 {
     period_count = 0;
+    taken_beat_offset = current_offset;
     
     if (n_period == 0){
         n_period = 1;
@@ -548,6 +570,7 @@ void Ramp::start_period()
     }
     
     period_length = get_period_length();
+    
     set_period_death();
     
     period_peak = (float(*attack) * float(samplerate)) / 1000;
@@ -572,32 +595,34 @@ void Ramp::start_period()
 void Ramp::start_first_period(uint32_t frame)
 {
     n_period = 1;
+    current_offset = 0;
     start_period();
     current_shape = float(*shape);
     current_depth = float(*depth);
     
-    float tempo_now = get_tempo();
-    int pre_start_n = int(*pre_start);
+//     float tempo_now = get_tempo();
+//     int pre_start_n = int(*pre_start);
     
-    float too_much = float(*pre_start) - pre_start_n;
-    if (too_much >= 0.5f){
-        pre_start_n += 1;
-    }
+//     float too_much = float(*pre_start) - pre_start_n;
+//     if (too_much >= 0.5f){
+//         pre_start_n += 1;
+//     }
+//     
+//     if (pre_start_n < 1){
+//         has_pre_start = false;
+//         period_length = get_period_length();
+//     } else { 
+//         has_pre_start = true;
+//         period_length = pre_start_n * int(
+//             (float(60.0f / tempo_now) * float(samplerate)) / float(*pre_start_units));
+//     }
+    has_pre_start = bool(*pre_start > 0.5f);
     
-    if (pre_start_n < 1){
-        has_pre_start = false;
-        period_length = get_period_length();
-    } else { 
-        has_pre_start = true;
-        period_length = pre_start_n * int(
-            (float(60.0f / tempo_now) * float(samplerate)) / float(*pre_start_units));
-    }
+//     period_length += (float(60.0f/tempo_now) * samplerate / 8) * float(*beat_offset);
     
-    period_length += (float(60.0f/tempo_now) * samplerate / 8) * float(*first_offset);
-    
-    if (period_peak >= period_death - default_fade){
-        period_peak = period_death - default_fade;
-    }
+//     if (period_peak >= period_death - default_fade){
+//         period_peak = period_death - default_fade;
+//     }
     
     send_midi_start_stop(true, frame);
     
