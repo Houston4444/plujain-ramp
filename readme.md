@@ -1,6 +1,7 @@
 -- README FOR PLUJAIN-RAMP --
 
-Plujain-Ramp is a mono rhytmic tremolo LV2 Audio Plugin.
+Plujain-Ramp is a mono rhythmic tremolo LV2 Audio Plugin.
+Each period of the tremolo is made of one short fade in and one long fade out.
 There is currently no GUI, but it's not really needed.
 
 A tremolo is just a plugin that moves the volume, so there are no particular dependencies except these ones needed to build a LV2 plugin.
@@ -9,7 +10,7 @@ To build and install just type:
 make
 sudo make install
 
-Plugin contains one audio input/output, and one midi input/output to allow user to synchronize multiples instances together.
+This plugin contains one audio input/output, and one midi input/output to allow user to synchronize multiples instances together.
 
 Now let see the control ports and what they do:
 
