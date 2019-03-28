@@ -1,8 +1,12 @@
 -- README FOR PLUJAIN-RAMP --
 
 Plujain-Ramp is a mono rhythmic tremolo LV2 Audio Plugin.<br>
-Each period of the tremolo is made of one short fade in and one long fade out.<br>
+Each period of the tremolo is made of one short fade in and one long fade out,<br>
+so we can say it generates musical pulses.<br>
 There is currently no GUI, but it's not really needed.<br>
+
+You can ear examples of how can sound the plugin here:<br>
+https://soundcloud.com/user-420463073/sets/plujain-ramp-examples
 
 There are no particular dependencies except these ones needed to build an LV2 plugin.
 
@@ -31,12 +35,13 @@ Now let see the control ports and what they do:
         Midi Stop signals are ignored.
 
     Start With Threshold:
-        At start, out volume will be at the down of the Depth. If Depth is at 100%, signal will be muted.
+        At start, out volume will be at the down of the Depth.
+        If Depth is at 100%, signal will be muted.
         When signal in audio_in exceed "Input Threshold",
-        effect is started and a Midi Start signal is sent to midi_out).
+        effect is started and a Midi Start signal is sent to midi_out.
         If at the end of the effect period (last 50ms),
         signal in audio_in doesn't exceed "Leave Threshold", 
-        "Input Threshold" can restart effect again.
+        effect will be still alive but restarted the next time "Input Threshold" is reached.
 
     Host Transport:
         Still experimental. For the moment, effect will start at Transport Play.
@@ -50,7 +55,7 @@ Now let see the control ports and what they do:
         out volume will return to the down of the depth.
 
     Midi In Slave / Stop is Bypass:
-        Same as Midi In Slave except that at start effect is bypassed,
+        Same as Midi In Slave except that at start the effect is bypassed.
         a stop signal in midi_in will make it go back to bypass.
 
 
@@ -78,7 +83,7 @@ Now let see the control ports and what they do:
 ----------
     
 <strong>Sync Tempo:</strong>
-    Set Tempo to the tempo host.
+    Set Tempo to the host tempo.
 
 <strong>Tempo:</strong>
     If you don't know what a tempo is, not sure that this plugin will help you !
