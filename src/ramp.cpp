@@ -14,6 +14,10 @@
 #include "lv2/lv2plug.in/ns/ext/time/time.h"
 #include <lv2/lv2plug.in/ns/ext/urid/urid.h>
 /**********************************************************************************************************************************************************/
+#define MIN(a,b) ( (a) < (b) ? (a) : (b) )
+#define MAX(a,b) ( (a) > (b) ? (a) : (b) )
+#define RAIL(v, min, max) (MIN((max), MAX((min), (v))))
+#define ROUND(v) (uint32_t(v + 0.5f))
 
 #define PLUGIN_URI "http://plujain/plugins/ramp"
 enum {IN, MIDI_IN, OUT, MIDI_OUT,
@@ -143,6 +147,9 @@ public:
     bool ternary;
     int taken_by_groove;
     
+    uint32_t instance_started_since;
+    bool start_sent_after_start;
+    
     /* Host Time */
 	bool     host_info;
 	float    host_bpm;
@@ -264,6 +271,8 @@ LV2_Handle Ramp::instantiate(const LV2_Descriptor* descriptor, double samplerate
     plugin->n_period = 1;
     plugin->taken_by_groove = 0;
     
+    plugin->instance_started_since = 0;
+    plugin->start_sent_after_start = false;
     
     int i;
 	for (i=0; features[i]; ++i) {
@@ -441,7 +450,7 @@ float Ramp::get_division()
 {
     ternary = false;
     
-    switch (int(*division)){
+    switch (RAIL(ROUND(*division), 0, 14)){
         case 0:
             return 8;
         case 1:
@@ -509,16 +518,11 @@ int Ramp::get_period_length()
     }
     
     int tmp_period_length;
-    float tmp_pre_start = float(*pre_start);
+    uint32_t pre_start_n = ROUND(*pre_start);
     
-    if (running_step == FIRST_PERIOD and tmp_pre_start > 0.5){
-        int pre_start_n = int(tmp_pre_start);
-        if ((float(tmp_pre_start) - pre_start_n) >= 0.5f){
-            pre_start_n += 1;
-        }
-        
+    if (running_step == FIRST_PERIOD and pre_start_n > 0){
         tmp_period_length =  pre_start_n
-                             * int((float(60.0f / tempo_now) * samplerate) / *pre_start_units);
+                             * int((float(60.0f / tempo_now) * samplerate) / RAIL(ROUND(*pre_start_units), 1, 8));
     } else {
         tmp_period_length = int((float(60.0f / tempo_now) * float(samplerate)) * tmp_division);
     
@@ -533,7 +537,7 @@ int Ramp::get_period_length()
     }
     
     current_offset = (float(60.0f/tempo_now) * samplerate * 0.125)
-                            * float(*beat_offset);
+                     * RAIL(*beat_offset, -1, 1); /* 0.125 for beat/8 */
     tmp_period_length += current_offset - taken_beat_offset;
     
     if (tmp_period_length < threshold_time){
@@ -587,7 +591,7 @@ void Ramp::start_period()
     
     if (running_step == WAITING_SIGNAL){
         ex_depth = current_depth;
-        current_depth = float(*depth);
+        current_depth = RAIL(*depth, 0, 1);
     }
 }
 
@@ -597,8 +601,8 @@ void Ramp::start_first_period(uint32_t frame)
     n_period = 1;
     current_offset = 0;
     start_period();
-    current_shape = float(*shape);
-    current_depth = float(*depth);
+    current_shape = RAIL(*shape, 4, 4);
+    current_depth = RAIL(*depth, 0, 1);
     
 //     float tempo_now = get_tempo();
 //     int pre_start_n = int(*pre_start);
@@ -649,7 +653,7 @@ float Ramp::get_fall_period_factor()
     } else if (n_max < 3){
         shape = float(shape/2);
     } else if (n_max < 4){
-        shape = float(shape*3/4);
+        shape = float(shape * 3/4);
     }
                 
     if (current_shape > 0.0f){
@@ -692,6 +696,10 @@ void Ramp::send_midi_start_stop(bool start, uint32_t frame)
 	if (0 == lv2_atom_forge_raw (&forge, &midiatom, sizeof (LV2_Atom))) return;
 	if (0 == lv2_atom_forge_raw (&forge, msg, 3)) return;
     lv2_atom_forge_pad (&forge, sizeof (LV2_Atom) + 3);
+    
+    if (instance_started_since > (2 * samplerate)){
+        start_sent_after_start = true;
+    }
 }
 
 void Ramp::send_midi_start_stop(bool start)
@@ -727,10 +735,16 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
     bool active_state = bool(*plugin->active > 0.5f);
     
     /* check mode change */
-    if (uint32_t(*plugin->mode) != plugin->current_mode
+    
+    uint32_t mode = ROUND(RAIL(*plugin->mode, 0, 4));
+    
+    if (mode != plugin->current_mode
             or (active_state and not plugin->ex_active_state)){
-        plugin->current_mode = uint32_t(*plugin->mode);
-        
+        plugin->current_mode = mode;
+//         std::string s = std::to_string(*plugin->mode);
+//         char const *pchar = s.c_str();
+//         lv2_log_error (&plugin->logger,
+//                        pchar);
         if (active_state){
             if (plugin->current_mode == MODE_ACTIVE){
                 plugin->set_running_step(FIRST_PERIOD);
@@ -930,8 +944,8 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
                          
                 } else {
                     if (plugin->period_count == plugin->period_peak){
-                        plugin->current_shape = float(*plugin->shape);
-                        plugin->current_depth = float(*plugin->depth);
+                        plugin->current_shape = float(RAIL(*plugin->shape, -4, 4));
+                        plugin->current_depth = float(RAIL(*plugin->depth, 0, 1));
                         
                         int tmp_period_length = plugin->get_period_length();
                         if (tmp_period_length >= (plugin->period_peak + plugin->default_fade)){
@@ -972,6 +986,14 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
                 
                 plugin->start_period();
                 
+                if (active_state
+                    and plugin->running_step == EFFECT
+                    and not plugin->start_sent_after_start){
+                    /* send start if plugin just loaded because slave instances
+                     * may have not been ready for a previous start */
+                        plugin->send_midi_start_stop(true, i);
+                }
+                
                 if (plugin->stop_request){
                     plugin->set_running_step(WAITING_SIGNAL);
                 }
@@ -1011,6 +1033,10 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
 		}
 	}
     plugin->ex_active_state = active_state;
+    
+    if (plugin->instance_started_since <= (2 * plugin->samplerate)){
+        plugin->instance_started_since += n_samples;
+    }
 }
 
 /**********************************************************************************************************************************************************/
