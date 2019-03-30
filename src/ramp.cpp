@@ -150,6 +150,8 @@ public:
     uint32_t instance_started_since;
     bool start_sent_after_start;
     
+    bool host_was_playing;
+    
     /* Host Time */
 	bool     host_info;
 	float    host_bpm;
@@ -273,6 +275,8 @@ LV2_Handle Ramp::instantiate(const LV2_Descriptor* descriptor, double samplerate
     
     plugin->instance_started_since = 0;
     plugin->start_sent_after_start = false;
+    
+    plugin->host_was_playing = false;
     
     int i;
 	for (i=0; features[i]; ++i) {
@@ -601,32 +605,10 @@ void Ramp::start_first_period(uint32_t frame)
     n_period = 1;
     current_offset = 0;
     start_period();
-    current_shape = RAIL(*shape, 4, 4);
+    current_shape = RAIL(*shape, -4, 4);
     current_depth = RAIL(*depth, 0, 1);
     
-//     float tempo_now = get_tempo();
-//     int pre_start_n = int(*pre_start);
-    
-//     float too_much = float(*pre_start) - pre_start_n;
-//     if (too_much >= 0.5f){
-//         pre_start_n += 1;
-//     }
-//     
-//     if (pre_start_n < 1){
-//         has_pre_start = false;
-//         period_length = get_period_length();
-//     } else { 
-//         has_pre_start = true;
-//         period_length = pre_start_n * int(
-//             (float(60.0f / tempo_now) * float(samplerate)) / float(*pre_start_units));
-//     }
     has_pre_start = bool(*pre_start > 0.5f);
-    
-//     period_length += (float(60.0f/tempo_now) * samplerate / 8) * float(*beat_offset);
-    
-//     if (period_peak >= period_death - default_fade){
-//         period_peak = period_death - default_fade;
-//     }
     
     send_midi_start_stop(true, frame);
     
@@ -746,9 +728,9 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
 //         lv2_log_error (&plugin->logger,
 //                        pchar);
         if (active_state){
-            if (plugin->current_mode == MODE_ACTIVE){
+            if (mode == MODE_ACTIVE or mode == MODE_HOST_TRANSPORT){
                 plugin->set_running_step(FIRST_PERIOD);
-            } else if (plugin->current_mode == MODE_MIDI_BYPASS){
+            } else if (mode == MODE_MIDI_BYPASS){
                 plugin->set_running_step(OUTING);
             } else {
                 plugin->set_running_step(FIRST_WAITING_PERIOD);
@@ -788,16 +770,20 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
         }
     }
     
-    if (active_state and plugin->current_mode == MODE_HOST_TRANSPORT){
-        if (plugin->host_speed > 0){
-            if (plugin->running_step < FIRST_PERIOD){
+    if (active_state
+        and plugin->current_mode == MODE_HOST_TRANSPORT
+        and not (plugin->host_speed <= 0)){
+            if (not plugin->host_was_playing){
+//                 std::cout << "azpeo" << std::endl;
+//                 std::cout << plugin->bar_beats << std::endl;
+//                 std::string s = std::to_string(plugin->bar_beats);
+//                 char const *pchar = s.c_str();
+//                 lv2_log_error (&plugin->logger, pchar);
                 plugin->set_running_step(FIRST_PERIOD);
             }
-        } else {
-            if (plugin->running_step == EFFECT){
-                plugin->set_running_step(OUTING);
-            }
-        }
+            plugin->host_was_playing = true;
+    }  else {
+        plugin->host_was_playing = false;
     }
     
     if (plugin->ex_active_state and not active_state){
