@@ -518,18 +518,18 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
         const uint32_t capacity = plugin->midi_out->atom.size;
         lv2_atom_forge_set_buffer (&plugin->forge, (uint8_t*)plugin->midi_out, capacity);
         lv2_atom_forge_sequence_head (&plugin->forge, &plugin->frame, 0);
+    }
         
-        /* process control events (for host transport) */
-        LV2_Atom_Event* ev = lv2_atom_sequence_begin (&(plugin->midi_in)->body);
-        while (!lv2_atom_sequence_is_end (&(plugin->midi_in)->body, (plugin->midi_in)->atom.size, ev)) {
-            if (ev->body.type == plugin->uris.atom_Blank || ev->body.type == plugin->uris.atom_Object) {
-                const LV2_Atom_Object* obj = (LV2_Atom_Object*)&ev->body;
-                if (obj->body.otype == plugin->uris.time_Position) {
-                    update_position(plugin, obj);
-                }
+    /* process control events (for host transport) */
+    LV2_Atom_Event* ev = lv2_atom_sequence_begin (&(plugin->midi_in)->body);
+    while (!lv2_atom_sequence_is_end (&(plugin->midi_in)->body, (plugin->midi_in)->atom.size, ev)) {
+        if (ev->body.type == plugin->uris.atom_Blank || ev->body.type == plugin->uris.atom_Object) {
+            const LV2_Atom_Object* obj = (LV2_Atom_Object*)&ev->body;
+            if (obj->body.otype == plugin->uris.time_Position) {
+                update_position(plugin, obj);
             }
-            ev = lv2_atom_sequence_next (ev);
         }
+        ev = lv2_atom_sequence_next (ev);
     }
     
     bool active_state = bool(*plugin->active > 0.5f);

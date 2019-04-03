@@ -5,7 +5,29 @@
 // #define RAIL(v, min, max) (MIN((max), MAX((min), (v))))
 // #define ROUND(v) (uint32_t(v + 0.5f))
 
-LiveRamp::LiveRamp(){
+enum {BYPASS, FIRST_WAITING_PERIOD, WAITING_SIGNAL, FIRST_PERIOD, EFFECT, OUTING};
+enum {MODE_ACTIVE, MODE_THRESHOLD, MODE_HOST_TRANSPORT, MODE_MIDI, MODE_MIDI_BYPASS};
+
+static void
+map_mem_uris (LV2_URID_Map* map, PluginURIs* uris)
+{
+	uris->atom_Blank          = map->map (map->handle, LV2_ATOM__Blank);
+	uris->atom_Object         = map->map (map->handle, LV2_ATOM__Object);
+	uris->midi_MidiEvent      = map->map (map->handle, LV2_MIDI__MidiEvent);
+	uris->atom_Sequence       = map->map (map->handle, LV2_ATOM__Sequence);
+	uris->time_Position       = map->map (map->handle, LV2_TIME__Position);
+	uris->atom_Long           = map->map (map->handle, LV2_ATOM__Long);
+	uris->atom_Int            = map->map (map->handle, LV2_ATOM__Int);
+	uris->atom_Float          = map->map (map->handle, LV2_ATOM__Float);
+	uris->time_bar            = map->map (map->handle, LV2_TIME__bar);
+	uris->time_barBeat        = map->map (map->handle, LV2_TIME__barBeat);
+	uris->time_beatUnit       = map->map (map->handle, LV2_TIME__beatUnit);
+	uris->time_beatsPerBar    = map->map (map->handle, LV2_TIME__beatsPerBar);
+	uris->time_beatsPerMinute = map->map (map->handle, LV2_TIME__beatsPerMinute);
+	uris->time_speed          = map->map (map->handle, LV2_TIME__speed);
+}
+
+LiveRamp::LiveRamp() : Ramp(){
     is_live_ramp = true;
 }
 
@@ -128,6 +150,70 @@ void LiveRamp::connect_port(LV2_Handle instance, uint32_t port, void *data)
             plugin->volume = (float*) data;
             break;
     }
+}
+
+LV2_Handle LiveRamp::instantiate(const LV2_Descriptor* descriptor, double samplerate, const char* bundle_path, 
+                  const LV2_Feature* const* features)
+{
+    LiveRamp *plugin = new LiveRamp();
+    
+    plugin->samplerate = samplerate;
+    
+    plugin->period_count = 0;
+    plugin->period_length = 12000;
+    plugin->period_death = 12000;
+    plugin->taken_beat_offset = 0;
+    plugin->current_offset = 0;
+    
+    plugin->ex_active_state = false;
+    
+    plugin->default_fade = int(0.005 * samplerate);  /*  5ms */
+    plugin->threshold_time = int(0.05 * samplerate); /* 50ms */
+    
+    plugin->running_step = WAITING_SIGNAL;
+    plugin->current_mode = MODE_ACTIVE;
+    
+    plugin->waiting_enter_threshold = true;
+    plugin->leave_threshold_exceeded = false;
+    plugin->stop_request = false;
+    
+    plugin->current_volume = 1.0f;
+    plugin->current_depth = 1.0f;
+    plugin->ex_volume = 1.0f;
+    plugin->ex_depth = 1.0f;
+    plugin->last_global_factor = 1.0f;
+    plugin->last_global_factor_mem = 1.0f;
+    plugin->has_pre_start = false;
+    plugin->n_period = 1;
+    plugin->taken_by_groove = 0;
+    
+    plugin->instance_started_since = 0;
+    plugin->start_sent_after_start = false;
+    
+    plugin->host_was_playing = false;
+    
+    int i;
+	for (i=0; features[i]; ++i) {
+		if (!strcmp (features[i]->URI, LV2_URID__map)) {
+			plugin->map = (LV2_URID_Map*)features[i]->data;
+		} else if (!strcmp (features[i]->URI, LV2_LOG__log)) {
+			plugin->log = (LV2_Log_Log*)features[i]->data;
+		}
+	}
+	
+	lv2_log_logger_init (&plugin->logger, plugin->map, plugin->log);
+    
+    if (!plugin->map) {
+		lv2_log_error (&plugin->logger,
+                       "Ramp.lv2 error: Host does not support urid:map\n");
+		free (plugin);
+		return NULL;
+	}
+    
+    lv2_atom_forge_init (&plugin->forge, plugin->map);
+    map_mem_uris(plugin->map, &plugin->uris);
+    
+    return (LV2_Handle)plugin;
 }
 
 

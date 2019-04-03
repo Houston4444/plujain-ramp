@@ -15,7 +15,7 @@
 <http://plujain/plugins/ramp_live>
 a lv2:Plugin, lv2:ModulatorPlugin;
 
-doap:name "Plujain-Ramp";
+doap:name "Plujain-Ramp Live";
 
 doap:developer [
     foaf:name "Houston4444";

@@ -27,12 +27,12 @@ PLUGIN = ramp.so
 
 $(PLUGIN): $(OBJ)
 	$(CXX) $(LDFLAGS) $(OBJ) -o $(PLUGIN) $(LIBS)
-
+	
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -o $@ $<
 
 clean:
-	$(RM) src/*.o $(PLUGIN)
+	$(RM) src/*.o $(PLUGIN) $(PLUGIN2)
 
 install:
 	mkdir -p $(COMPLETE_INSTALL_PATH)

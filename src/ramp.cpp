@@ -9,7 +9,7 @@
 
 
 // #include "Ramp.h"
-#include "Ramp.h"
+#include "LiveRamp.h"
 /**********************************************************************************************************************************************************/
 
 
@@ -39,6 +39,16 @@ static const LV2_Descriptor Descriptor = {
     Ramp::extension_data
 };
 
+static const LV2_Descriptor DescriptorLive = {
+    PLUGIN_URI_LIVE,
+    LiveRamp::instantiate,
+    LiveRamp::connect_port,
+    LiveRamp::activate,
+    LiveRamp::run,
+    LiveRamp::deactivate,
+    LiveRamp::cleanup,
+    LiveRamp::extension_data
+};
 /**********************************************************************************************************************************************************/
 
 
@@ -48,6 +58,7 @@ LV2_SYMBOL_EXPORT
 const LV2_Descriptor* lv2_descriptor(uint32_t index)
 {
     if (index == 0) return &Descriptor;
+    else if (index == 1) return &DescriptorLive;
     else return NULL;
 }
 
