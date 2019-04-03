@@ -20,10 +20,11 @@
 #define ROUND(v) (uint32_t(v + 0.5f))
 
 #define PLUGIN_URI "http://plujain/plugins/ramp"
+
 enum {IN, MIDI_IN, OUT, MIDI_OUT,
       ACTIVE, MODE, ENTER_THRESHOLD, LEAVE_THRESHOLD, PRE_START, PRE_START_UNITS, BEAT_OFFSET,
       SYNC_BPM, HOST_TEMPO, TEMPO, DIVISION, MAX_DURATION, HALF_SPEED, DOUBLE_SPEED,
-      ATTACK, SHAPE, DEPTH, VOLUME, PLUGIN_PORT_COUNT};
+      ATTACK, SHAPE, DEPTH, VOLUME, SUB_OCTAVE, PLUGIN_PORT_COUNT};
 
 enum {BYPASS, FIRST_WAITING_PERIOD, WAITING_SIGNAL, FIRST_PERIOD, EFFECT, OUTING};
 
@@ -47,6 +48,8 @@ typedef struct {
 } PluginURIs;
 
 /**********************************************************************************************************************************************************/
+
+float audio_memory[12000];
 
 static void
 map_mem_uris (LV2_URID_Map* map, PluginURIs* uris)
@@ -114,6 +117,7 @@ public:
     float *shape;
     float *depth;
     float *volume;
+    float *sub_octave;
     
     double samplerate;
     
@@ -125,6 +129,7 @@ public:
     int threshold_time;
     int taken_beat_offset;
     int current_offset;
+    int ex_period_length;
     
     uint32_t running_step;
     uint32_t current_mode;
@@ -138,6 +143,7 @@ public:
     float current_shape;
     float current_depth;
     float current_volume;
+    float current_sub_octave;
     float ex_volume;
     float ex_depth;
     float last_global_factor;
@@ -278,6 +284,9 @@ LV2_Handle Ramp::instantiate(const LV2_Descriptor* descriptor, double samplerate
     
     plugin->host_was_playing = false;
     
+//     float audio_memory[plugin->period_length];
+//     plugin->audio_memory = audio_memory;
+    
     int i;
 	for (i=0; features[i]; ++i) {
 		if (!strcmp (features[i]->URI, LV2_URID__map)) {
@@ -392,6 +401,9 @@ void Ramp::connect_port(LV2_Handle instance, uint32_t port, void *data)
         case VOLUME:
             plugin->volume = (float*) data;
             break;
+        case SUB_OCTAVE:
+            plugin->sub_octave = (float*) data;
+            break;
     }
 }
 
@@ -425,6 +437,7 @@ void Ramp::set_running_step(uint32_t step, uint32_t frame)
             taken_beat_offset = 0;
             break;
         case OUTING:
+            ex_period_length = period_count;
             period_count = 0;
             waiting_enter_threshold = false;
             send_midi_start_stop(false);
@@ -596,6 +609,14 @@ void Ramp::start_period()
     if (running_step == WAITING_SIGNAL){
         ex_depth = current_depth;
         current_depth = RAIL(*depth, 0, 1);
+    }
+    
+    if (running_step == FIRST_PERIOD
+        or running_step == EFFECT
+        or running_step == OUTING){
+            current_sub_octave = powf(10.0f, (*sub_octave)/20.0f);
+    } else {
+        current_sub_octave = 0;
     }
 }
 
@@ -845,6 +866,7 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
         float period_factor = 1;
         float v = plugin->current_volume;
         float d = plugin->current_depth;
+        float so = plugin->current_sub_octave;
         
         if (start_sample == int(i)){
             plugin->set_running_step(FIRST_PERIOD, i);
@@ -855,6 +877,7 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
             case BYPASS:
                 v = 1.0f;
                 d = 0.0f;
+                plugin->current_sub_octave = 0.0f;
                 break;
                 
             case FIRST_WAITING_PERIOD:
@@ -951,18 +974,45 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
                     period_factor = plugin->last_global_factor_mem \
                                     + (plugin->period_count/float(plugin->default_fade)) \
                                       * (1 - plugin->last_global_factor_mem);
+                    so = plugin->current_sub_octave * (1 - plugin->period_count/float(plugin->default_fade));
+//                     plugin->current_sub_octave = (plugin->default_fade - plugin->period_count)/float(plugin->default_fade)
                 } else {
                     plugin->set_running_step(BYPASS);
                 }
                 break;
         }
         
-        plugin->last_global_factor = (1 - (1-period_factor) * d) * v;
-        plugin->out[i] = plugin->in[i] * plugin->last_global_factor;
+//         if (plugin->period_count <= plugin->period_length/2){
+//             audio_memory[plugin->period_count] = plugin->in[i];
+//         }
         
-        plugin->period_count++;
+        
+        plugin->last_global_factor = (1 - (1-period_factor) * d) * v;
+//         plugin->out[i] = plugin->in[i] * plugin->last_global_factor;
+        
+        float octaved_value;
+        
+//         octaved_value = audio_memory[plugin->period_length - plugin->period_count];
+        int count = plugin->period_count;
+        if (plugin->running_step == OUTING){
+            count += plugin->ex_period_length;
+        }
+        
+        octaved_value = audio_memory[count / 2];
+        if (count % 2){
+            octaved_value += (audio_memory[1 + count/2] - audio_memory[count/2]) / 2.0f;
+        }
+        
+        plugin->out[i] = plugin->in[i] * plugin->last_global_factor + octaved_value * period_factor * so;
+//             plugin->out[i] = octaved_value * plugin->last_global_factor;
+        
+//         if (plugin->period_count <= plugin->period_length/2){
+            audio_memory[plugin->period_count] = plugin->in[i];
+//         }
         
         if (plugin->running_step != BYPASS){
+            plugin->period_count++;
+            
             if (plugin->period_count == plugin->period_length){
                 if (plugin->running_step == FIRST_PERIOD){
                     plugin->set_running_step(EFFECT);
