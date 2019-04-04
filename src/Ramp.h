@@ -62,6 +62,11 @@ public:
     virtual uint32_t get_mode();
     virtual float get_enter_threshold();
     virtual float get_leave_threshold();
+    float get_shut_octave_factor();
+    float get_effect_suboctave_value();
+    float get_effect_sub_suboctave_value();
+    float get_shut_suboctave_value();
+    float get_shut_sub_suboctave_value();
     
     float *in;
     const LV2_Atom_Sequence *midi_in;
@@ -85,6 +90,10 @@ public:
     float *shape;
     float *depth;
     float *volume;
+    float *sub_suboctave;
+    float *suboctave;
+    float *out_test;
+    float *out_test2;
     
     double samplerate;
     
@@ -96,6 +105,8 @@ public:
     int threshold_time;
     int taken_beat_offset;
     int current_offset;
+    int ex_period_length;
+    int period_cut;
     
     uint32_t running_step;
     uint32_t current_mode;
@@ -113,6 +124,10 @@ public:
     float ex_depth;
     float last_global_factor;
     float last_global_factor_mem;
+    float oct_period_factor;
+    float oct_period_factor_mem;
+    float current_sub_suboctave;
+    float current_suboctave;
     bool has_pre_start;
     uint8_t n_period;
     bool ternary;

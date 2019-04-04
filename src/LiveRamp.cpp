@@ -79,7 +79,7 @@ void LiveRamp::connect_port(LV2_Handle instance, uint32_t port, void *data)
     enum {IN, MIDI_IN, OUT, MIDI_OUT,
       ACTIVE, MODE, ENTER_THRESHOLD, LEAVE_THRESHOLD, PRE_START, PRE_START_UNITS, BEAT_OFFSET,
       SYNC_BPM, HOST_TEMPO, TEMPO, DIVISION, MAX_DURATION, HALF_SPEED, DOUBLE_SPEED,
-      ATTACK, SHAPE, DEPTH, VOLUME, PLUGIN_PORT_COUNT};
+      ATTACK, SHAPE, DEPTH, VOLUME, SUB_SUBOCTAVE, SUBOCTAVE, OUT_TEST, OUT_TEST2, PLUGIN_PORT_COUNT};
 
     switch (port)
     {
@@ -149,6 +149,18 @@ void LiveRamp::connect_port(LV2_Handle instance, uint32_t port, void *data)
         case VOLUME:
             plugin->volume = (float*) data;
             break;
+        case SUB_SUBOCTAVE:
+            plugin->sub_suboctave = (float*) data;
+            break;
+        case SUBOCTAVE:
+            plugin->suboctave = (float*) data;
+            break;
+        case OUT_TEST:
+            plugin->out_test = (float*) data;
+            break;
+        case OUT_TEST2:
+            plugin->out_test2 = (float*) data;
+            break;
     }
 }
 
@@ -179,10 +191,14 @@ LV2_Handle LiveRamp::instantiate(const LV2_Descriptor* descriptor, double sample
     
     plugin->current_volume = 1.0f;
     plugin->current_depth = 1.0f;
+    plugin->current_sub_suboctave = 0.0f;
+    plugin->current_suboctave = 0.0f;
     plugin->ex_volume = 1.0f;
     plugin->ex_depth = 1.0f;
     plugin->last_global_factor = 1.0f;
     plugin->last_global_factor_mem = 1.0f;
+    plugin->oct_period_factor = 0.0f;
+    plugin->oct_period_factor_mem = 0.0f;
     plugin->has_pre_start = false;
     plugin->n_period = 1;
     plugin->taken_by_groove = 0;
