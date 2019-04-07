@@ -6,6 +6,7 @@
 #include <map>
 #include <iostream>
 
+
 #include <lv2/lv2plug.in/ns/lv2core/lv2.h>
 #include <lv2/lv2plug.in/ns/ext/atom/atom.h>
 #include <lv2/lv2plug.in/ns/ext/atom/forge.h>
@@ -63,8 +64,10 @@ public:
     virtual float get_enter_threshold();
     virtual float get_leave_threshold();
     float get_shut_octave_factor();
+    float get_effect_up_octave_value();
     float get_effect_suboctave_value();
     float get_effect_sub_suboctave_value();
+    float get_shut_up_octave_value();
     float get_shut_suboctave_value();
     float get_shut_sub_suboctave_value();
     
@@ -92,6 +95,7 @@ public:
     float *volume;
     float *sub_suboctave;
     float *suboctave;
+    float *upoctave;
     float *out_test;
     float *out_test2;
     
@@ -107,6 +111,8 @@ public:
     int current_offset;
     int ex_period_length;
     int period_cut;
+    int period_audio_start;
+    int period_fake_start;
     
     uint32_t running_step;
     uint32_t current_mode;
@@ -128,6 +134,7 @@ public:
     float oct_period_factor_mem;
     float current_sub_suboctave;
     float current_suboctave;
+    float current_upoctave;
     bool has_pre_start;
     uint8_t n_period;
     bool ternary;

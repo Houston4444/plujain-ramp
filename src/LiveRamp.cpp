@@ -79,7 +79,7 @@ void LiveRamp::connect_port(LV2_Handle instance, uint32_t port, void *data)
     enum {IN, MIDI_IN, OUT, MIDI_OUT,
       ACTIVE, MODE, ENTER_THRESHOLD, LEAVE_THRESHOLD, PRE_START, PRE_START_UNITS, BEAT_OFFSET,
       SYNC_BPM, HOST_TEMPO, TEMPO, DIVISION, MAX_DURATION, HALF_SPEED, DOUBLE_SPEED,
-      ATTACK, SHAPE, DEPTH, VOLUME, SUB_SUBOCTAVE, SUBOCTAVE, OUT_TEST, OUT_TEST2, PLUGIN_PORT_COUNT};
+      ATTACK, SHAPE, DEPTH, VOLUME, SUB_SUBOCTAVE, SUBOCTAVE, UPOCTAVE, OUT_TEST, OUT_TEST2, PLUGIN_PORT_COUNT};
 
     switch (port)
     {
@@ -155,6 +155,9 @@ void LiveRamp::connect_port(LV2_Handle instance, uint32_t port, void *data)
         case SUBOCTAVE:
             plugin->suboctave = (float*) data;
             break;
+        case UPOCTAVE:
+            plugin->upoctave = (float*) data;
+            break;
         case OUT_TEST:
             plugin->out_test = (float*) data;
             break;
@@ -207,6 +210,9 @@ LV2_Handle LiveRamp::instantiate(const LV2_Descriptor* descriptor, double sample
     plugin->start_sent_after_start = false;
     
     plugin->host_was_playing = false;
+    
+//     size_t size = 1000000;
+    
     
     int i;
 	for (i=0; features[i]; ++i) {

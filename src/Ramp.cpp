@@ -5,7 +5,7 @@
 #include <lv2.h>
 #include <map>
 #include <iostream>
-
+#include <vector>
 
 
 #include "Ramp.h"
@@ -15,7 +15,9 @@
 enum {BYPASS, FIRST_WAITING_PERIOD, WAITING_SIGNAL, FIRST_PERIOD, EFFECT, OUTING};
 enum {MODE_ACTIVE, MODE_THRESHOLD, MODE_HOST_TRANSPORT, MODE_MIDI, MODE_MIDI_BYPASS};
 
-float audio_memory[12000];
+float audio_memory[4800000]; /*max 100s of audio save in 48000 */
+uint32_t max_audio = 12000;
+// uint32_t 
 
 static void
 map_mem_uris (LV2_URID_Map* map, PluginURIs* uris)
@@ -273,7 +275,7 @@ void Ramp::set_running_step(uint32_t step, uint32_t frame)
             break;
         case FIRST_PERIOD:
             period_cut = period_count;
-            ex_period_length = period_length;
+//             ex_period_length = period_length;
             oct_period_factor_mem = oct_period_factor;
             start_first_period(frame);
             break;
@@ -420,6 +422,14 @@ void Ramp::set_period_death()
 
 void Ramp::start_period()
 {
+    ex_period_length = period_length;
+    
+    period_audio_start += period_count;
+    if (period_audio_start >= 2000000){
+        period_fake_start = period_audio_start;
+        period_audio_start = 0;
+    }
+    
     period_count = 0;
     taken_beat_offset = current_offset;
     
@@ -458,6 +468,11 @@ void Ramp::start_period()
     current_suboctave = powf(10.0f, (*suboctave)/20.0f);
     if (*suboctave <= -80.0f){
         current_suboctave = 0.0f;
+    }
+    
+    current_upoctave = powf(10.0f, (*upoctave)/20.0f);
+    if (*upoctave <= -80.0f){
+        current_upoctave = 0.0f;
     }
 }
 
@@ -543,12 +558,70 @@ float Ramp::get_shut_octave_factor()
 }
 
 
+// float Ramp::get_value_from_count(int offset){
+//     int frame = period_audio_start + period_count - offset;
+//     if (frame < 0){
+//         frame += period_fake_start;
+//         if (frame < period_audio_start + period_count){
+//             return 0.0f;
+//         }
+//     }
+//     
+//     return audio_memory[frame];
+// }
+
+
+float Ramp::get_effect_up_octave_value()
+{
+    uint32_t frame = 0;
+    
+//     if (period_count < (period_length * 3/4.0f)){
+//         int tmp_frame = period_audio_start - (period_length * 3) + period_count * 4;
+//         
+//         if (tmp_frame < 0){
+//             tmp_frame = period_fake_start - (period_length * 3) + period_count * 4;
+//             
+//             if (tmp_frame < (period_audio_start + period_count)){
+//                 return 0.0f;
+//             }
+//         }
+//         
+//         frame = uint32_t(tmp_frame);
+//     } else {
+//         frame = period_audio_start + (period_count - (period_length * 3/4.0f)) * 4;
+//     }
+    
+    if ((period_count * 2) < period_length){
+        int tmp_frame = period_audio_start - period_length + period_count * 2;
+        
+        if (tmp_frame < 0){
+            tmp_frame = period_fake_start - period_length + period_count * 2;
+            
+            if (tmp_frame < (period_audio_start + period_count)){
+                return 0.0f;
+            }
+        }
+        
+        frame = uint32_t(tmp_frame);
+    } else {
+        frame = period_audio_start + (period_count - period_length/2) * 2;
+    }
+    
+    return audio_memory[frame];
+}
+
 float Ramp::get_effect_suboctave_value()
 {
-    float octaved_value = audio_memory[period_count / 2];
+    uint32_t frame = period_audio_start + period_count / 2;
+
+//     if (ternary and n_period == 1){
+//         frame += ex_period_length;
+//     }
+    
+    float octaved_value = audio_memory[frame];
     
     if (period_count % 2){
-        octaved_value += (audio_memory[1 + period_count/2] - audio_memory[period_count/2]) / 2.0f;
+        octaved_value += (audio_memory[frame + 1] - audio_memory[frame]) / 2.0f;
     }
     
     return octaved_value;
@@ -557,12 +630,31 @@ float Ramp::get_effect_suboctave_value()
 
 float Ramp::get_effect_sub_suboctave_value()
 {
-    float octaved_value = audio_memory[period_count/4];
+    uint32_t frame = period_audio_start + period_count / 4;
+    
+//     if (ternary and n_period == 1){
+//         frame += ex_period_length;
+//     }
+    
+    float octaved_value = audio_memory[frame];
     uint8_t delta = period_count % 4;
-    octaved_value += (audio_memory[1 + period_count/4] - octaved_value) * delta/4.0f;
+    octaved_value += (audio_memory[frame +1] - octaved_value) * delta/4.0f;
     return octaved_value;
 }
 
+
+float Ramp::get_shut_up_octave_value()
+{
+    float octaved_value = 0.0f;
+    
+    if (period_count <= (ex_period_length - period_cut)){
+        int count = period_cut + period_count;
+        octaved_value = audio_memory[count*2];
+    }
+    
+    return octaved_value;
+}
+    
 
 float Ramp::get_shut_suboctave_value()
 {
@@ -586,13 +678,18 @@ float Ramp::get_shut_sub_suboctave_value()
     float octaved_value = 0.0f;
     
     if (period_count <= (ex_period_length - period_cut)){
+//         int count = period_audio_start - ex_period_length + period_cut + period_count;
+        
         int count = period_cut + period_count;
-        octaved_value = audio_memory[count/4];
+        uint32_t frame = period_audio_start - ex_period_length + count/4;
+        if (frame < 0){
+            frame = period_fake_start - ex_period_length + count/4;
+        }
+        
+        octaved_value = audio_memory[frame];
         
         uint8_t delta = count % 4;
-        if (delta){
-            octaved_value += (audio_memory[1 + count/4] - audio_memory[count/4]) / float(delta);
-        }
+        octaved_value += (audio_memory[frame +1] - audio_memory[frame]) / float(delta);
     }
     
     return octaved_value;
@@ -767,12 +864,11 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
         float v = plugin->current_volume;
         float d = plugin->current_depth;
         
-        float oct_period_factor = 1;
-        float so = 1;
-        float sso = 1;
+        float oct_period_factor = 0;
         
         float suboctave_value = 0;
         float sub_suboctave_value = 0;
+        float up_octave_value = 0;
         
         if (start_sample == int(i)){
             plugin->set_running_step(FIRST_PERIOD, i);
@@ -783,9 +879,6 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
             case BYPASS:
                 v = 1.0f;
                 d = 0.0f;
-                oct_period_factor = 0.0f;
-                suboctave_value = 0.0f;
-                sub_suboctave_value = 0.0f;
                 break;
                 
             case FIRST_WAITING_PERIOD:
@@ -799,6 +892,7 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
                 oct_period_factor = plugin->get_shut_octave_factor();
                 suboctave_value = plugin->get_shut_suboctave_value() * oct_period_factor;
                 sub_suboctave_value = plugin->get_shut_sub_suboctave_value() * oct_period_factor;
+                up_octave_value = plugin->get_shut_up_octave_value() * oct_period_factor;
                 break;
                 
             case WAITING_SIGNAL:
@@ -853,12 +947,14 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
                                                 * oct_period_factor
                                               + plugin->get_effect_sub_suboctave_value()
                                                 * plugin->period_count/float(plugin->period_peak);
+                        up_octave_value = 0.0f;
                         
                     } else {
                         period_factor = plugin->get_fall_period_factor();
                         oct_period_factor = period_factor;
                         suboctave_value = plugin->get_effect_suboctave_value() * period_factor;
                         sub_suboctave_value = plugin->get_effect_sub_suboctave_value() * period_factor;
+                        up_octave_value = 0.0f;
                     }
                 } else {
                     if (plugin->period_count < plugin->default_fade){
@@ -900,7 +996,7 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
                 oct_period_factor = period_factor;
                 suboctave_value = plugin->get_effect_suboctave_value() * period_factor;
                 sub_suboctave_value = plugin->get_effect_sub_suboctave_value() * period_factor;
-                
+                up_octave_value = plugin->get_effect_up_octave_value() * period_factor;
                 break;
                 
             case OUTING:
@@ -917,7 +1013,7 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
                 oct_period_factor = plugin->get_shut_octave_factor();
                 suboctave_value = plugin->get_shut_suboctave_value() * oct_period_factor;
                 sub_suboctave_value = plugin->get_shut_sub_suboctave_value() * oct_period_factor;
-                
+                up_octave_value = plugin->get_shut_up_octave_value() * oct_period_factor;
                 break;
         }
         
@@ -930,7 +1026,20 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
 //         if (plugin->running_step == OUTING){
 //             count += plugin->ex_period_length;
 //         }
-        audio_memory[plugin->period_count] = plugin->in[i];
+//         if (plugin->ex_period_length > plugin->period_length){
+//             max_audio = plugin->ex_period_length + plugin->period_length;
+// //         if (plugin->ternary and plugin->n_period == 1){
+//             audio_memory[plugin->ex_period_length + plugin->period_count] = plugin->in[i];
+//         } else {
+// //             max_audio = plugin->period_length;
+//             audio_memory[plugin->period_count] = plugin->in[i];
+//         }
+        
+        audio_memory[plugin->period_audio_start + plugin->period_count] = plugin->in[i];
+        
+        
+//         plugin->audio_mem.insert(plugin->audio_mem.begin(), plugin->in[i]);
+//         plugin->audio_mem.resize(1000000, 0.0f);
 //         octaved_value = audio_memory[count / 2];
 //         if (count % 2){
 //             octaved_value += (audio_memory[1 + count/2] - audio_memory[count/2]) / 2.0f;
@@ -940,7 +1049,8 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
         
         plugin->out[i] = plugin->in[i] * plugin->last_global_factor
                         + sub_suboctave_value * plugin->current_sub_suboctave
-                        + suboctave_value * plugin->current_suboctave;
+                        + suboctave_value * plugin->current_suboctave
+                        + up_octave_value * plugin->current_upoctave;
                         
 //         plugin->out_test[i] = suboctave_value * plugin->current_suboctave;
         plugin->out_test[i] = plugin->last_global_factor - 0.5;
