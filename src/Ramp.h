@@ -64,6 +64,7 @@ public:
     virtual float get_enter_threshold();
     virtual float get_leave_threshold();
     float get_shut_octave_factor();
+    float get_octave_image_value(float speed, bool leaving);
     float get_effect_up_octave_value();
     float get_effect_suboctave_value();
     float get_effect_sub_suboctave_value();
@@ -103,6 +104,7 @@ public:
     
     int period_count;
     int period_length;
+    int period_length_at_start;
     int period_death;
     int period_peak;
     int default_fade;
@@ -122,6 +124,7 @@ public:
     bool waiting_enter_threshold;
     bool leave_threshold_exceeded;
     bool stop_request;
+    bool octaves_running;
     
     float current_shape;
     float current_depth;

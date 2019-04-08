@@ -15,7 +15,7 @@
 enum {BYPASS, FIRST_WAITING_PERIOD, WAITING_SIGNAL, FIRST_PERIOD, EFFECT, OUTING};
 enum {MODE_ACTIVE, MODE_THRESHOLD, MODE_HOST_TRANSPORT, MODE_MIDI, MODE_MIDI_BYPASS};
 
-float audio_memory[4800000]; /*max 100s of audio save in 48000 */
+float audio_memory[960000]; /*max 10s of audio save in 96000 */
 uint32_t max_audio = 12000;
 // uint32_t 
 
@@ -255,9 +255,12 @@ void Ramp::set_running_step(uint32_t step, uint32_t frame)
     stop_request = false;
     running_step = step;
     
+    std::cout << step << std::endl;
+    
     switch(step)
     {
         case BYPASS:
+            octaves_running = false;
             current_volume = 1;
             current_depth = 0;
             break;
@@ -270,6 +273,7 @@ void Ramp::set_running_step(uint32_t step, uint32_t frame)
             waiting_enter_threshold = true;
             break;
         case WAITING_SIGNAL:
+            octaves_running = false;
             period_count = 0;
             period_length = default_fade;
             break;
@@ -277,9 +281,21 @@ void Ramp::set_running_step(uint32_t step, uint32_t frame)
             period_cut = period_count;
 //             ex_period_length = period_length;
             oct_period_factor_mem = oct_period_factor;
-            start_first_period(frame);
+            n_period = 1;
+            current_offset = 0;
+            start_period();
+            current_shape = RAIL(*shape, -4, 4);
+            current_depth = RAIL(*depth, 0, 1);
+            
+            has_pre_start = bool(*pre_start > 0.5f);
+            
+            send_midi_start_stop(true, frame);
+            
+            waiting_enter_threshold = false;
+//             start_first_period(frame);
             break;
         case EFFECT:
+            octaves_running = true;
             taken_beat_offset = 0;
             break;
         case OUTING:
@@ -348,7 +364,9 @@ float Ramp::get_division()
 
 int Ramp::get_period_length()
 {
-    if (running_step == WAITING_SIGNAL or running_step == FIRST_WAITING_PERIOD){
+    if (running_step == FIRST_PERIOD or running_step == EFFECT){
+        ;
+    } else {
         return default_fade;
     }
     
@@ -425,10 +443,12 @@ void Ramp::start_period()
     ex_period_length = period_length;
     
     period_audio_start += period_count;
-    if (period_audio_start >= 2000000){
+    if (period_audio_start >= 480000){
         period_fake_start = period_audio_start;
         period_audio_start = 0;
     }
+    
+//     std::cout << period_audio_start << std::endl;
     
     period_count = 0;
     taken_beat_offset = current_offset;
@@ -440,6 +460,11 @@ void Ramp::start_period()
     }
     
     period_length = get_period_length();
+    period_length_at_start = period_length;
+    
+    if (running_step == BYPASS or running_step == OUTING){
+        return;
+    }
     
     set_period_death();
     
@@ -558,28 +583,75 @@ float Ramp::get_shut_octave_factor()
 }
 
 
-// float Ramp::get_value_from_count(int offset){
-//     int frame = period_audio_start + period_count - offset;
-//     if (frame < 0){
-//         frame += period_fake_start;
-//         if (frame < period_audio_start + period_count){
-//             return 0.0f;
-//         }
-//     }
-//     
-//     return audio_memory[frame];
-// }
+float Ramp::get_octave_image_value(float speed, bool leaving){
+    if (speed <= 0){
+        return 0.0f;
+    }
+    
+    int frame;
+    if (speed <= 1){
+        frame = period_audio_start + period_count * speed;
+    } else {
+        frame = period_audio_start + period_length_at_start
+                - (period_length_at_start - period_count) * speed;
+    }
+    
+    if (leaving){
+        frame -= ex_period_length;
+        frame += period_cut;
+    }
+    
+    
+    if (frame > period_audio_start + period_count){
+        return 0.0f;
+    }
+    
+    if (frame < 0){
+        frame += period_fake_start;
+        if (frame < period_audio_start + period_count){
+            return 0.0f;
+        }
+    }
+    
+    if (frame > 960000){
+        return 0.0f;
+    }
+    
+    float value = audio_memory[frame];
+    if (speed <= 1){
+        int delta = period_count % int(1/speed);
+        value += (audio_memory[frame+1] - audio_memory[frame]) * delta * speed;
+    }
+    
+    return value;
+}
 
 
 float Ramp::get_effect_up_octave_value()
 {
-    uint32_t frame = 0;
-    
-//     if (period_count < (period_length * 3/4.0f)){
-//         int tmp_frame = period_audio_start - (period_length * 3) + period_count * 4;
+//     uint32_t frame = 0;
+//     
+// //     if (period_count < (period_length * 3/4.0f)){
+// //         int tmp_frame = period_audio_start - (period_length * 3) + period_count * 4;
+// //         
+// //         if (tmp_frame < 0){
+// //             tmp_frame = period_fake_start - (period_length * 3) + period_count * 4;
+// //             
+// //             if (tmp_frame < (period_audio_start + period_count)){
+// //                 return 0.0f;
+// //             }
+// //         }
+// //         
+// //         frame = uint32_t(tmp_frame);
+// //     } else {
+// //         frame = period_audio_start + (period_count - (period_length * 3/4.0f)) * 4;
+// //     }
+//     
+//     if ((period_count * 2) < period_length){
+//         int tmp_frame = period_audio_start - period_length + period_count * 2;
 //         
 //         if (tmp_frame < 0){
-//             tmp_frame = period_fake_start - (period_length * 3) + period_count * 4;
+//             tmp_frame = period_fake_start - period_length + period_count * 2;
 //             
 //             if (tmp_frame < (period_audio_start + period_count)){
 //                 return 0.0f;
@@ -588,111 +660,102 @@ float Ramp::get_effect_up_octave_value()
 //         
 //         frame = uint32_t(tmp_frame);
 //     } else {
-//         frame = period_audio_start + (period_count - (period_length * 3/4.0f)) * 4;
+//         frame = period_audio_start + (period_count - period_length/2) * 2;
 //     }
-    
-    if ((period_count * 2) < period_length){
-        int tmp_frame = period_audio_start - period_length + period_count * 2;
-        
-        if (tmp_frame < 0){
-            tmp_frame = period_fake_start - period_length + period_count * 2;
-            
-            if (tmp_frame < (period_audio_start + period_count)){
-                return 0.0f;
-            }
-        }
-        
-        frame = uint32_t(tmp_frame);
-    } else {
-        frame = period_audio_start + (period_count - period_length/2) * 2;
-    }
-    
-    return audio_memory[frame];
+//     
+//     return audio_memory[frame];
+    return get_octave_image_value(2.0, false);
 }
 
 float Ramp::get_effect_suboctave_value()
 {
-    uint32_t frame = period_audio_start + period_count / 2;
-
-//     if (ternary and n_period == 1){
-//         frame += ex_period_length;
+//     uint32_t frame = period_audio_start + period_count / 2;
+// 
+// //     if (ternary and n_period == 1){
+// //         frame += ex_period_length;
+// //     }
+//     
+//     float octaved_value = audio_memory[frame];
+//     
+//     if (period_count % 2){
+//         octaved_value += (audio_memory[frame + 1] - audio_memory[frame]) / 2.0f;
 //     }
-    
-    float octaved_value = audio_memory[frame];
-    
-    if (period_count % 2){
-        octaved_value += (audio_memory[frame + 1] - audio_memory[frame]) / 2.0f;
-    }
-    
-    return octaved_value;
+//     
+//     return octaved_value;
+    return get_octave_image_value(0.5, false);
 }
 
 
 float Ramp::get_effect_sub_suboctave_value()
 {
-    uint32_t frame = period_audio_start + period_count / 4;
-    
-//     if (ternary and n_period == 1){
-//         frame += ex_period_length;
-//     }
-    
-    float octaved_value = audio_memory[frame];
-    uint8_t delta = period_count % 4;
-    octaved_value += (audio_memory[frame +1] - octaved_value) * delta/4.0f;
-    return octaved_value;
+//     uint32_t frame = period_audio_start + period_count / 4;
+//     
+// //     if (ternary and n_period == 1){
+// //         frame += ex_period_length;
+// //     }
+//     
+//     float octaved_value = audio_memory[frame];
+//     uint8_t delta = period_count % 4;
+//     octaved_value += (audio_memory[frame +1] - octaved_value) * delta/4.0f;
+//     return octaved_value;
+    return get_octave_image_value(0.25, false);
 }
 
 
 float Ramp::get_shut_up_octave_value()
 {
-    float octaved_value = 0.0f;
-    
-    if (period_count <= (ex_period_length - period_cut)){
-        int count = period_cut + period_count;
-        octaved_value = audio_memory[count*2];
-    }
-    
-    return octaved_value;
+    return get_octave_image_value(2.0, true);
+//     float octaved_value = 0.0f;
+//     
+//     if (period_count <= (ex_period_length - period_cut)){
+//         int count = period_cut + period_count;
+//         octaved_value = audio_memory[count*2];
+//     }
+//     
+//     return octaved_value;
 }
     
 
 float Ramp::get_shut_suboctave_value()
 {
-    float octaved_value = 0.0f;
-    
-    if (period_count <= (ex_period_length - period_cut)){
-        int count = period_cut + period_count;
-        octaved_value = audio_memory[count/2];
-        
-        if (count % 2){
-            octaved_value += (audio_memory[1 + count/2] - audio_memory[count/2]) / 2.0f;
-        }
-    }
-    
-    return octaved_value;
+//     float octaved_value = 0.0f;
+//     
+//     if (period_count <= (ex_period_length - period_cut)){
+//         int count = period_cut + period_count;
+//         octaved_value = audio_memory[count/2];
+//         
+//         if (count % 2){
+//             octaved_value += (audio_memory[1 + count/2] - audio_memory[count/2]) / 2.0f;
+//         }
+//     }
+//     
+//     return octaved_value;
+    return get_octave_image_value(0.5, true);
 }
 
 
 float Ramp::get_shut_sub_suboctave_value()
 {
-    float octaved_value = 0.0f;
-    
-    if (period_count <= (ex_period_length - period_cut)){
-//         int count = period_audio_start - ex_period_length + period_cut + period_count;
-        
-        int count = period_cut + period_count;
-        uint32_t frame = period_audio_start - ex_period_length + count/4;
-        if (frame < 0){
-            frame = period_fake_start - ex_period_length + count/4;
-        }
-        
-        octaved_value = audio_memory[frame];
-        
-        uint8_t delta = count % 4;
-        octaved_value += (audio_memory[frame +1] - audio_memory[frame]) / float(delta);
-    }
-    
-    return octaved_value;
+//     float octaved_value = 0.0f;
+//     
+//     if (period_count <= (ex_period_length - period_cut)){
+// //         int count = period_audio_start - ex_period_length + period_cut + period_count;
+//         
+//         int count = period_cut + period_count;
+//         int frame = period_audio_start - ex_period_length + count/4;
+//         if (frame < 0){
+//             frame += period_fake_start;
+//             if (frame < period_audio_start + period_count){
+//                 return 0.0f;
+//             }
+//         }
+//         octaved_value = audio_memory[frame];
+//         uint8_t delta = count % 4;
+//         octaved_value += (audio_memory[frame +1] - audio_memory[frame]) / float(delta);
+//     }
+//     
+//     return octaved_value;
+    return get_octave_image_value(0.25, true);
 }
 
 
@@ -888,11 +951,13 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
                                 - (plugin->last_global_factor_mem
                                     - (1 - plugin->current_depth) * plugin->current_volume)
                                   * plugin->period_count/float(plugin->period_length);
-                                  
-                oct_period_factor = plugin->get_shut_octave_factor();
-                suboctave_value = plugin->get_shut_suboctave_value() * oct_period_factor;
-                sub_suboctave_value = plugin->get_shut_sub_suboctave_value() * oct_period_factor;
-                up_octave_value = plugin->get_shut_up_octave_value() * oct_period_factor;
+                
+                if (plugin->octaves_running){
+                    oct_period_factor = plugin->get_shut_octave_factor();
+                    suboctave_value = plugin->get_shut_suboctave_value() * oct_period_factor;
+                    sub_suboctave_value = plugin->get_shut_sub_suboctave_value() * oct_period_factor;
+                    up_octave_value = plugin->get_shut_up_octave_value() * oct_period_factor;
+                }
                 break;
                 
             case WAITING_SIGNAL:
@@ -905,9 +970,6 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
                 v = plugin->ex_volume \
                     + plugin->period_count/float(plugin->period_length) \
                       * (plugin->current_volume - plugin->ex_volume);
-                      
-                suboctave_value = 0.0f;
-                sub_suboctave_value = 0.0f;
                 break;
                 
             case FIRST_PERIOD:
@@ -938,7 +1000,6 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
                             period_factor = float(plugin->period_count - plugin->default_fade) \
                                             / float(plugin->period_peak - plugin->default_fade);
                         }
-                        
                         oct_period_factor = plugin->get_shut_octave_factor();
                         suboctave_value = plugin->get_shut_suboctave_value() * oct_period_factor
                                           + plugin->get_effect_suboctave_value()
@@ -1000,59 +1061,31 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
                 break;
                 
             case OUTING:
-                if (plugin->period_count < plugin->default_fade){
-                    v = 1;
-                    d = 1;
-                    period_factor = plugin->last_global_factor_mem \
-                                    + (plugin->period_count/float(plugin->default_fade)) \
-                                      * (1 - plugin->last_global_factor_mem);
-                } else {
-                    plugin->set_running_step(BYPASS);
-                }
+                v = 1;
+                d = 1;
+                period_factor = plugin->last_global_factor_mem \
+                                + (plugin->period_count/float(plugin->default_fade)) \
+                                    * (1 - plugin->last_global_factor_mem);
                 
-                oct_period_factor = plugin->get_shut_octave_factor();
-                suboctave_value = plugin->get_shut_suboctave_value() * oct_period_factor;
-                sub_suboctave_value = plugin->get_shut_sub_suboctave_value() * oct_period_factor;
-                up_octave_value = plugin->get_shut_up_octave_value() * oct_period_factor;
+                if (plugin->octaves_running){
+                    oct_period_factor = plugin->get_shut_octave_factor();
+                    suboctave_value = plugin->get_shut_suboctave_value() * oct_period_factor;
+                    sub_suboctave_value = plugin->get_shut_sub_suboctave_value() * oct_period_factor;
+                    up_octave_value = plugin->get_shut_up_octave_value() * oct_period_factor;
+                }
                 break;
         }
         
         plugin->last_global_factor = (1 - (1-period_factor) * d) * v;
         plugin->oct_period_factor = oct_period_factor;
-//         float octaved_value;
-        
-//         octaved_value = audio_memory[plugin->period_length - plugin->period_count];
-//         int count = plugin->period_count;
-//         if (plugin->running_step == OUTING){
-//             count += plugin->ex_period_length;
-//         }
-//         if (plugin->ex_period_length > plugin->period_length){
-//             max_audio = plugin->ex_period_length + plugin->period_length;
-// //         if (plugin->ternary and plugin->n_period == 1){
-//             audio_memory[plugin->ex_period_length + plugin->period_count] = plugin->in[i];
-//         } else {
-// //             max_audio = plugin->period_length;
-//             audio_memory[plugin->period_count] = plugin->in[i];
-//         }
         
         audio_memory[plugin->period_audio_start + plugin->period_count] = plugin->in[i];
-        
-        
-//         plugin->audio_mem.insert(plugin->audio_mem.begin(), plugin->in[i]);
-//         plugin->audio_mem.resize(1000000, 0.0f);
-//         octaved_value = audio_memory[count / 2];
-//         if (count % 2){
-//             octaved_value += (audio_memory[1 + count/2] - audio_memory[count/2]) / 2.0f;
-//         }
-        
-//         float subsuboctaved_value = audio_memory[count / 4];
         
         plugin->out[i] = plugin->in[i] * plugin->last_global_factor
                         + sub_suboctave_value * plugin->current_sub_suboctave
                         + suboctave_value * plugin->current_suboctave
                         + up_octave_value * plugin->current_upoctave;
                         
-//         plugin->out_test[i] = suboctave_value * plugin->current_suboctave;
         plugin->out_test[i] = plugin->last_global_factor - 0.5;
         plugin->out_test2[i] = plugin->oct_period_factor - 0.5;
 //             plugin->out[i] = octaved_value * period_factor;
@@ -1066,43 +1099,57 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
         
         
         
-        if (plugin->running_step != BYPASS){
-            plugin->period_count++;
+//         if (plugin->running_step != BYPASS){
+        plugin->period_count++;
+        
+        if (plugin->period_count == plugin->period_length){
+//             if (plugin->running_step == FIRST_PERIOD){
+//                 plugin->set_running_step(EFFECT);
+//             } else if (plugin->running_step == FIRST_WAITING_PERIOD){
+//                 plugin->set_running_step(WAITING_SIGNAL);
+//             } else if (plugin->running_step == OUTING){
+//                 plugin->set_running_step(BYPASS);
+//             }
             
-            if (plugin->period_count == plugin->period_length){
-                if (plugin->running_step == FIRST_PERIOD){
+            switch(plugin->running_step){
+                case FIRST_WAITING_PERIOD:
+                    plugin->set_running_step(WAITING_SIGNAL);
+                    break;
+                case FIRST_PERIOD:
                     plugin->set_running_step(EFFECT);
-                } else if (plugin->running_step == FIRST_WAITING_PERIOD){
-                    plugin->set_running_step(WAITING_SIGNAL);
-                } 
-                
-                plugin->start_period();
-                
-                if (active_state
-                    and plugin->running_step == EFFECT
-                    and not plugin->start_sent_after_start){
-                    /* send start if plugin just loaded because slave instances
-                     * may have not been ready for a previous start */
-                        plugin->send_midi_start_stop(true, i);
-                }
-                
-                if (plugin->stop_request){
-                    plugin->set_running_step(WAITING_SIGNAL);
-                }
-                
-                
-                plugin->waiting_enter_threshold = not bool(plugin->leave_threshold_exceeded);
-                plugin->leave_threshold_exceeded = false;
+                    break;
+                case OUTING:
+                    plugin->set_running_step(BYPASS);
+                    break;
             }
-
-            if (plugin->period_count > (plugin->period_length - plugin->threshold_time)
-                and ! plugin->waiting_enter_threshold
-                and ! plugin->leave_threshold_exceeded
-                and plugin->current_mode == MODE_THRESHOLD
-                and abs(plugin->in[i] >= leave_threshold)){
-                    plugin->leave_threshold_exceeded = true;
+            
+            plugin->start_period();
+            
+            if (active_state
+                and plugin->running_step == EFFECT
+                and not plugin->start_sent_after_start){
+                /* send start if plugin just loaded because slave instances
+                    * may have not been ready for a previous start */
+                    plugin->send_midi_start_stop(true, i);
             }
+            
+            if (plugin->stop_request){
+                plugin->set_running_step(WAITING_SIGNAL);
+            }
+            
+            
+            plugin->waiting_enter_threshold = not bool(plugin->leave_threshold_exceeded);
+            plugin->leave_threshold_exceeded = false;
         }
+
+        if (plugin->period_count > (plugin->period_length - plugin->threshold_time)
+            and ! plugin->waiting_enter_threshold
+            and ! plugin->leave_threshold_exceeded
+            and plugin->current_mode == MODE_THRESHOLD
+            and abs(plugin->in[i] >= leave_threshold)){
+                plugin->leave_threshold_exceeded = true;
+        }
+//         }
     }
     
     if (plugin->is_live_ramp){
