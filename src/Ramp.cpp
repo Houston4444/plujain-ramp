@@ -186,7 +186,7 @@ void Ramp::connect_port(LV2_Handle instance, uint32_t port, void *data)
 
     enum {IN, CTRL_IN, OUT, ACTIVE, PRE_START, PRE_START_UNITS, BEAT_OFFSET, HOST_TEMPO,
       DIVISION, MAX_DURATION, HALF_SPEED, DOUBLE_SPEED,
-      ATTACK, SHAPE, DEPTH, VOLUME, SUB_SUBOCTAVE, SUBOCTAVE, PLUGIN_PORT_COUNT};
+      ATTACK, SHAPE, DEPTH, VOLUME, SPEED_EFFECT, SPEED_EFFECT_VOL, PLUGIN_PORT_COUNT};
 
     switch (port)
     {
@@ -238,11 +238,11 @@ void Ramp::connect_port(LV2_Handle instance, uint32_t port, void *data)
         case VOLUME:
             plugin->volume = (float*) data;
             break;
-        case SUB_SUBOCTAVE:
-            plugin->sub_suboctave = (float*) data;
+        case SPEED_EFFECT:
+            plugin->speed_effect = (float*) data;
             break;
-        case SUBOCTAVE:
-            plugin->suboctave = (float*) data;
+        case SPEED_EFFECT_VOL:
+            plugin->speed_effect_vol = (float*) data;
             break;
     }
 }
@@ -252,59 +252,39 @@ void Ramp::connect_port(LV2_Handle instance, uint32_t port, void *data)
 void Ramp::set_running_step(uint32_t step, uint32_t frame)
 {
     last_global_factor_mem = last_global_factor;
+    oct_period_factor_mem = oct_period_factor;
     stop_request = false;
     running_step = step;
-    
-    std::cout << step << std::endl;
     
     switch(step)
     {
         case BYPASS:
-            octaves_running = false;
             current_volume = 1;
             current_depth = 0;
             break;
         case FIRST_WAITING_PERIOD:
-            period_cut = period_count;
-            ex_period_length = period_length;
-            oct_period_factor_mem = oct_period_factor;
-            period_count = 0;
-            period_length = default_fade;
+            start_period();
             waiting_enter_threshold = true;
             break;
         case WAITING_SIGNAL:
-            octaves_running = false;
-            period_count = 0;
-            period_length = default_fade;
             break;
         case FIRST_PERIOD:
-            period_cut = period_count;
-//             ex_period_length = period_length;
-            oct_period_factor_mem = oct_period_factor;
             n_period = 1;
             current_offset = 0;
             start_period();
             current_shape = RAIL(*shape, -4, 4);
             current_depth = RAIL(*depth, 0, 1);
-            
             has_pre_start = bool(*pre_start > 0.5f);
-            
             send_midi_start_stop(true, frame);
-            
             waiting_enter_threshold = false;
-//             start_first_period(frame);
             break;
         case EFFECT:
-            octaves_running = true;
             taken_beat_offset = 0;
             break;
         case OUTING:
-            period_cut = period_count;
-            ex_period_length = period_length;
-            oct_period_factor_mem = oct_period_factor;
-            period_count = 0;
             waiting_enter_threshold = false;
             send_midi_start_stop(false);
+            start_period();
             break;
     }
 }
@@ -448,8 +428,7 @@ void Ramp::start_period()
         period_audio_start = 0;
     }
     
-//     std::cout << period_audio_start << std::endl;
-    
+    period_cut = period_count;
     period_count = 0;
     taken_beat_offset = current_offset;
     
@@ -460,6 +439,7 @@ void Ramp::start_period()
     }
     
     period_length = get_period_length();
+    ex_period_length_at_start = period_length_at_start;
     period_length_at_start = period_length;
     
     if (running_step == BYPASS or running_step == OUTING){
@@ -485,20 +465,22 @@ void Ramp::start_period()
         current_depth = RAIL(*depth, 0, 1);
     }
     
-    current_sub_suboctave = powf(10.0f, (*sub_suboctave)/20.0f);
-    if (*sub_suboctave <= -80.0f){
-        current_sub_suboctave = 0.0f;
-    }
-    
-    current_suboctave = powf(10.0f, (*suboctave)/20.0f);
-    if (*suboctave <= -80.0f){
-        current_suboctave = 0.0f;
-    }
-    
-    current_upoctave = powf(10.0f, (*upoctave)/20.0f);
-    if (*upoctave <= -80.0f){
-        current_upoctave = 0.0f;
-    }
+    current_speed_effect = float(*speed_effect);
+    current_speed_effect_vol = powf(10.0f, (*speed_effect_vol)/20.0f);
+//     current_sub_suboctave = powf(10.0f, (*sub_suboctave)/20.0f);
+//     if (*sub_suboctave <= -80.0f){
+//         current_sub_suboctave = 0.0f;
+//     }
+//     
+//     current_suboctave = powf(10.0f, (*suboctave)/20.0f);
+//     if (*suboctave <= -80.0f){
+//         current_suboctave = 0.0f;
+//     }
+//     
+//     current_upoctave = powf(10.0f, (*upoctave)/20.0f);
+//     if (*upoctave <= -80.0f){
+//         current_upoctave = 0.0f;
+//     }
 }
 
 
@@ -570,35 +552,42 @@ float Ramp::get_shut_octave_factor()
         
         if (period_count <= fade_len){
             tmp_period_factor = oct_period_factor_mem
-                                - (period_count/float(fade_len))
-                                    * oct_period_factor_mem;
+                                * (1 - period_count/float(fade_len));
         }
     } else if (period_count <= default_fade) {
         tmp_period_factor = oct_period_factor_mem
-                            - (period_count/float(default_fade))
-                                * oct_period_factor_mem;
+                            * (1 - period_count/float(default_fade));
     }
     
+//     std::cout << tmp_period_factor << std::endl;
     return tmp_period_factor;
 }
 
 
 float Ramp::get_octave_image_value(float speed, bool leaving){
-    if (speed <= 0){
+    if (speed == 0){
         return 0.0f;
     }
     
     int frame;
-    if (speed <= 1){
-        frame = period_audio_start + period_count * speed;
-    } else {
-        frame = period_audio_start + period_length_at_start
-                - (period_length_at_start - period_count) * speed;
-    }
+    int count = period_count;
+    int start = period_audio_start;
+    int length_at_start = period_length_at_start;
     
     if (leaving){
-        frame -= ex_period_length;
-        frame += period_cut;
+        count += period_cut;
+        start -= period_cut;
+        length_at_start = ex_period_length_at_start;
+    }
+    
+//     if (speed < 0){
+//         frame = start - count * speed;
+//         std::cout << frame << std::endl;
+    if (speed <= 1){
+        frame = start + count * speed;
+    } else {
+        frame = start + length_at_start
+                - (length_at_start - count) * speed;
     }
     
     
@@ -618,9 +607,19 @@ float Ramp::get_octave_image_value(float speed, bool leaving){
     }
     
     float value = audio_memory[frame];
-    if (speed <= 1){
-        int delta = period_count % int(1/speed);
-        value += (audio_memory[frame+1] - audio_memory[frame]) * delta * speed;
+    if (abs(speed) < 1){
+        /* create inter samples */
+        int delta = period_count % int(1/abs(speed)); /* speed can't be 0 here */
+        if (speed > 0){
+            value += (audio_memory[frame+1] - audio_memory[frame]) * delta * speed;
+        } else {
+            int compare_frame = frame -1;
+            if (compare_frame < 0){
+                compare_frame += period_fake_start;
+            }
+            
+            value += (audio_memory[compare_frame] - audio_memory[frame]) * delta * speed;
+        }
     }
     
     return value;
@@ -629,133 +628,36 @@ float Ramp::get_octave_image_value(float speed, bool leaving){
 
 float Ramp::get_effect_up_octave_value()
 {
-//     uint32_t frame = 0;
-//     
-// //     if (period_count < (period_length * 3/4.0f)){
-// //         int tmp_frame = period_audio_start - (period_length * 3) + period_count * 4;
-// //         
-// //         if (tmp_frame < 0){
-// //             tmp_frame = period_fake_start - (period_length * 3) + period_count * 4;
-// //             
-// //             if (tmp_frame < (period_audio_start + period_count)){
-// //                 return 0.0f;
-// //             }
-// //         }
-// //         
-// //         frame = uint32_t(tmp_frame);
-// //     } else {
-// //         frame = period_audio_start + (period_count - (period_length * 3/4.0f)) * 4;
-// //     }
-//     
-//     if ((period_count * 2) < period_length){
-//         int tmp_frame = period_audio_start - period_length + period_count * 2;
-//         
-//         if (tmp_frame < 0){
-//             tmp_frame = period_fake_start - period_length + period_count * 2;
-//             
-//             if (tmp_frame < (period_audio_start + period_count)){
-//                 return 0.0f;
-//             }
-//         }
-//         
-//         frame = uint32_t(tmp_frame);
-//     } else {
-//         frame = period_audio_start + (period_count - period_length/2) * 2;
-//     }
-//     
-//     return audio_memory[frame];
-    return get_octave_image_value(2.0, false);
+    return get_octave_image_value(-4.0f, false);
 }
 
 float Ramp::get_effect_suboctave_value()
 {
-//     uint32_t frame = period_audio_start + period_count / 2;
-// 
-// //     if (ternary and n_period == 1){
-// //         frame += ex_period_length;
-// //     }
-//     
-//     float octaved_value = audio_memory[frame];
-//     
-//     if (period_count % 2){
-//         octaved_value += (audio_memory[frame + 1] - audio_memory[frame]) / 2.0f;
-//     }
-//     
-//     return octaved_value;
-    return get_octave_image_value(0.5, false);
+    return get_octave_image_value(0.5f, false);
 }
 
 
 float Ramp::get_effect_sub_suboctave_value()
 {
-//     uint32_t frame = period_audio_start + period_count / 4;
-//     
-// //     if (ternary and n_period == 1){
-// //         frame += ex_period_length;
-// //     }
-//     
-//     float octaved_value = audio_memory[frame];
-//     uint8_t delta = period_count % 4;
-//     octaved_value += (audio_memory[frame +1] - octaved_value) * delta/4.0f;
-//     return octaved_value;
-    return get_octave_image_value(0.25, false);
+    return get_octave_image_value(-2.0f, false);
 }
 
 
 float Ramp::get_shut_up_octave_value()
 {
-    return get_octave_image_value(2.0, true);
-//     float octaved_value = 0.0f;
-//     
-//     if (period_count <= (ex_period_length - period_cut)){
-//         int count = period_cut + period_count;
-//         octaved_value = audio_memory[count*2];
-//     }
-//     
-//     return octaved_value;
+    return get_octave_image_value(-4.0f, true);
 }
     
 
 float Ramp::get_shut_suboctave_value()
 {
-//     float octaved_value = 0.0f;
-//     
-//     if (period_count <= (ex_period_length - period_cut)){
-//         int count = period_cut + period_count;
-//         octaved_value = audio_memory[count/2];
-//         
-//         if (count % 2){
-//             octaved_value += (audio_memory[1 + count/2] - audio_memory[count/2]) / 2.0f;
-//         }
-//     }
-//     
-//     return octaved_value;
-    return get_octave_image_value(0.5, true);
+    return get_octave_image_value(0.5f, true);
 }
 
 
 float Ramp::get_shut_sub_suboctave_value()
 {
-//     float octaved_value = 0.0f;
-//     
-//     if (period_count <= (ex_period_length - period_cut)){
-// //         int count = period_audio_start - ex_period_length + period_cut + period_count;
-//         
-//         int count = period_cut + period_count;
-//         int frame = period_audio_start - ex_period_length + count/4;
-//         if (frame < 0){
-//             frame += period_fake_start;
-//             if (frame < period_audio_start + period_count){
-//                 return 0.0f;
-//             }
-//         }
-//         octaved_value = audio_memory[frame];
-//         uint8_t delta = count % 4;
-//         octaved_value += (audio_memory[frame +1] - audio_memory[frame]) / float(delta);
-//     }
-//     
-//     return octaved_value;
-    return get_octave_image_value(0.25, true);
+    return get_octave_image_value(-2.0f, true);
 }
 
 
@@ -778,6 +680,7 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
     plugin = (Ramp *) instance;
     
     if (plugin->is_live_ramp){
+//         std::cout << "zoefiz" << std::endl; 
         /* set midi_out for midi messages */
         const uint32_t capacity = plugin->midi_out->atom.size;
         lv2_atom_forge_set_buffer (&plugin->forge, (uint8_t*)plugin->midi_out, capacity);
@@ -929,9 +832,10 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
         
         float oct_period_factor = 0;
         
-        float suboctave_value = 0;
-        float sub_suboctave_value = 0;
-        float up_octave_value = 0;
+        float speed_effect_value = 0;
+//         float suboctave_value = 0;
+//         float sub_suboctave_value = 0;
+//         float up_octave_value = 0;
         
         if (start_sample == int(i)){
             plugin->set_running_step(FIRST_PERIOD, i);
@@ -952,12 +856,11 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
                                     - (1 - plugin->current_depth) * plugin->current_volume)
                                   * plugin->period_count/float(plugin->period_length);
                 
-                if (plugin->octaves_running){
-                    oct_period_factor = plugin->get_shut_octave_factor();
-                    suboctave_value = plugin->get_shut_suboctave_value() * oct_period_factor;
-                    sub_suboctave_value = plugin->get_shut_sub_suboctave_value() * oct_period_factor;
-                    up_octave_value = plugin->get_shut_up_octave_value() * oct_period_factor;
-                }
+                oct_period_factor = plugin->get_shut_octave_factor();
+                speed_effect_value = plugin->get_octave_image_value(plugin->current_speed_effect, true);
+//                 suboctave_value = plugin->get_shut_suboctave_value() * oct_period_factor;
+//                 sub_suboctave_value = plugin->get_shut_sub_suboctave_value() * oct_period_factor;
+//                 up_octave_value = plugin->get_shut_up_octave_value() * oct_period_factor;
                 break;
                 
             case WAITING_SIGNAL:
@@ -1001,21 +904,31 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
                                             / float(plugin->period_peak - plugin->default_fade);
                         }
                         oct_period_factor = plugin->get_shut_octave_factor();
-                        suboctave_value = plugin->get_shut_suboctave_value() * oct_period_factor
-                                          + plugin->get_effect_suboctave_value()
-                                            * plugin->period_count/float(plugin->period_peak);
-                        sub_suboctave_value = plugin->get_shut_sub_suboctave_value()
+                        speed_effect_value = plugin->get_octave_image_value(plugin->current_speed_effect, true)
                                                 * oct_period_factor
-                                              + plugin->get_effect_sub_suboctave_value()
+                                             + plugin->get_octave_image_value(plugin->current_speed_effect, false)
                                                 * plugin->period_count/float(plugin->period_peak);
-                        up_octave_value = 0.0f;
+                                               
+//                         suboctave_value = plugin->get_shut_suboctave_value() * oct_period_factor
+//                                           + plugin->get_effect_suboctave_value()
+//                                             * plugin->period_count/float(plugin->period_peak);
+//                         sub_suboctave_value = plugin->get_shut_sub_suboctave_value()
+//                                                 * oct_period_factor
+//                                               + plugin->get_effect_sub_suboctave_value()
+//                                                 * plugin->period_count/float(plugin->period_peak);
+//                         up_octave_value = plugin->get_shut_up_octave_value()
+//                                             * oct_period_factor
+//                                           + plugin->get_effect_up_octave_value()
+//                                             * oct_period_factor;
                         
                     } else {
                         period_factor = plugin->get_fall_period_factor();
                         oct_period_factor = period_factor;
-                        suboctave_value = plugin->get_effect_suboctave_value() * period_factor;
-                        sub_suboctave_value = plugin->get_effect_sub_suboctave_value() * period_factor;
-                        up_octave_value = 0.0f;
+                        speed_effect_value = plugin->get_octave_image_value(plugin->current_speed_effect, false)
+                                             * oct_period_factor;
+//                         suboctave_value = plugin->get_effect_suboctave_value() * period_factor;
+//                         sub_suboctave_value = plugin->get_effect_sub_suboctave_value() * period_factor;
+//                         up_octave_value = plugin->get_effect_up_octave_value() * period_factor;
                     }
                 } else {
                     if (plugin->period_count < plugin->default_fade){
@@ -1055,24 +968,27 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
                 }
                 
                 oct_period_factor = period_factor;
-                suboctave_value = plugin->get_effect_suboctave_value() * period_factor;
-                sub_suboctave_value = plugin->get_effect_sub_suboctave_value() * period_factor;
-                up_octave_value = plugin->get_effect_up_octave_value() * period_factor;
+                speed_effect_value = plugin->get_octave_image_value(plugin->current_speed_effect, false)
+                                     * oct_period_factor;
+//                 suboctave_value = plugin->get_effect_suboctave_value() * period_factor;
+//                 sub_suboctave_value = plugin->get_effect_sub_suboctave_value() * period_factor;
+//                 up_octave_value = plugin->get_effect_up_octave_value() * period_factor;
                 break;
                 
             case OUTING:
                 v = 1;
                 d = 1;
-                period_factor = plugin->last_global_factor_mem \
-                                + (plugin->period_count/float(plugin->default_fade)) \
-                                    * (1 - plugin->last_global_factor_mem);
+                period_factor = plugin->last_global_factor_mem
+                                + (1 - plugin->last_global_factor_mem)
+                                  * plugin->period_count/float(plugin->default_fade);
                 
-                if (plugin->octaves_running){
-                    oct_period_factor = plugin->get_shut_octave_factor();
-                    suboctave_value = plugin->get_shut_suboctave_value() * oct_period_factor;
-                    sub_suboctave_value = plugin->get_shut_sub_suboctave_value() * oct_period_factor;
-                    up_octave_value = plugin->get_shut_up_octave_value() * oct_period_factor;
-                }
+                oct_period_factor = plugin->oct_period_factor_mem
+                                    * (1 - plugin->period_count/float(plugin->default_fade));
+                speed_effect_value = plugin->get_octave_image_value(plugin->current_speed_effect, true)
+                                     * oct_period_factor;
+//                 suboctave_value = plugin->get_shut_suboctave_value() * oct_period_factor;
+//                 sub_suboctave_value = plugin->get_shut_sub_suboctave_value() * oct_period_factor;
+//                 up_octave_value = plugin->get_shut_up_octave_value() * oct_period_factor;
                 break;
         }
         
@@ -1082,35 +998,14 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
         audio_memory[plugin->period_audio_start + plugin->period_count] = plugin->in[i];
         
         plugin->out[i] = plugin->in[i] * plugin->last_global_factor
-                        + sub_suboctave_value * plugin->current_sub_suboctave
-                        + suboctave_value * plugin->current_suboctave
-                        + up_octave_value * plugin->current_upoctave;
+                        + speed_effect_value * plugin->current_speed_effect_vol;
                         
         plugin->out_test[i] = plugin->last_global_factor - 0.5;
-        plugin->out_test2[i] = plugin->oct_period_factor - 0.5;
-//             plugin->out[i] = octaved_value * period_factor;
+        plugin->out_test2[i] = speed_effect_value * plugin->current_speed_effect_vol;
         
-//         if (plugin->period_count <= plugin->period_length/2){
-//             audio_memory[plugin->period_count] = plugin->in[i];
-//         }
-        
-        
-//         plugin->out[i] = plugin->in[i] * plugin->last_global_factor;
-        
-        
-        
-//         if (plugin->running_step != BYPASS){
         plugin->period_count++;
         
         if (plugin->period_count == plugin->period_length){
-//             if (plugin->running_step == FIRST_PERIOD){
-//                 plugin->set_running_step(EFFECT);
-//             } else if (plugin->running_step == FIRST_WAITING_PERIOD){
-//                 plugin->set_running_step(WAITING_SIGNAL);
-//             } else if (plugin->running_step == OUTING){
-//                 plugin->set_running_step(BYPASS);
-//             }
-            
             switch(plugin->running_step){
                 case FIRST_WAITING_PERIOD:
                     plugin->set_running_step(WAITING_SIGNAL);
@@ -1137,7 +1032,6 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
                 plugin->set_running_step(WAITING_SIGNAL);
             }
             
-            
             plugin->waiting_enter_threshold = not bool(plugin->leave_threshold_exceeded);
             plugin->leave_threshold_exceeded = false;
         }
@@ -1149,7 +1043,6 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
             and abs(plugin->in[i] >= leave_threshold)){
                 plugin->leave_threshold_exceeded = true;
         }
-//         }
     }
     
     if (plugin->is_live_ramp){

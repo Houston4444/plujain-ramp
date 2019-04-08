@@ -59,7 +59,7 @@ public:
     void start_first_period(uint32_t frame);
     float get_fall_period_factor();
     virtual void send_midi_start_stop(bool start);
-    void send_midi_start_stop(bool start, uint32_t frame);
+    virtual void send_midi_start_stop(bool start, uint32_t frame);
     virtual uint32_t get_mode();
     virtual float get_enter_threshold();
     virtual float get_leave_threshold();
@@ -94,9 +94,8 @@ public:
     float *shape;
     float *depth;
     float *volume;
-    float *sub_suboctave;
-    float *suboctave;
-    float *upoctave;
+    float *speed_effect;
+    float *speed_effect_vol;
     float *out_test;
     float *out_test2;
     
@@ -105,6 +104,7 @@ public:
     int period_count;
     int period_length;
     int period_length_at_start;
+    int ex_period_length_at_start;
     int period_death;
     int period_peak;
     int default_fade;
@@ -124,7 +124,6 @@ public:
     bool waiting_enter_threshold;
     bool leave_threshold_exceeded;
     bool stop_request;
-    bool octaves_running;
     
     float current_shape;
     float current_depth;
@@ -135,6 +134,8 @@ public:
     float last_global_factor_mem;
     float oct_period_factor;
     float oct_period_factor_mem;
+    float current_speed_effect;
+    float current_speed_effect_vol;
     float current_sub_suboctave;
     float current_suboctave;
     float current_upoctave;

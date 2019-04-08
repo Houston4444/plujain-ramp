@@ -297,30 +297,32 @@ lv2:port
 [
     a lv2:ControlPort, lv2:InputPort;
     lv2:index 22;
-    lv2:symbol "sub_suboctave";
-    lv2:name "Octave --";
-    units:unit units:db ;
-    lv2:scalePoint [rdfs:label "Mute"; rdf:value -80];
-    lv2:default -80;
-    lv2:minimum -80;
-    lv2:maximum 12;
+    lv2:symbol "speed_effect";
+    lv2:name "Speeed Effect";
+    lv2:portProperty lv2:enumeration ;
+        lv2:scalePoint [rdfs:label "Octave ++ reverse"; rdf:value -4];
+        lv2:scalePoint [rdfs:label "Octave + Fifth reverse"; rdf:value -3.0];
+        lv2:scalePoint [rdfs:label "Octave + reverse"; rdf:value -2];
+        lv2:scalePoint [rdfs:label "Fifth reverse"; rdf:value -1.5];
+        lv2:scalePoint [rdfs:label "Reverse"; rdf:value -1];
+        lv2:scalePoint [rdfs:label "Octave - reverse"; rdf:value -0.5];
+        lv2:scalePoint [rdfs:label "Octave -- reverse"; rdf:value -0.25];
+        lv2:scalePoint [rdfs:label "Octave --"; rdf:value 0.25];
+        lv2:scalePoint [rdfs:label "Octave -"; rdf:value 0.5];
+        lv2:scalePoint [rdfs:label "Fourth -"; rdf:value 0.75];
+        lv2:scalePoint [rdfs:label "Fifth +"; rdf:value 1.5];
+        lv2:scalePoint [rdfs:label "Octave +"; rdf:value 2];
+        lv2:scalePoint [rdfs:label "Octave + Fifth"; rdf:value 3];
+        lv2:scalePoint [rdfs:label "Octave ++"; rdf:value 4];
+    lv2:default 0.5;
+    lv2:minimum -4;
+    lv2:maximum 4;
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
     lv2:index 23;
-    lv2:symbol "suboctave";
-    lv2:name "Octave -";
-    units:unit units:db ;
-    lv2:scalePoint [rdfs:label "Mute"; rdf:value -80];
-    lv2:default -80;
-    lv2:minimum -80;
-    lv2:maximum 12;
-],
-[
-    a lv2:ControlPort, lv2:InputPort;
-    lv2:index 24;
-    lv2:symbol "upoctave";
-    lv2:name "Octave +";
+    lv2:symbol "speed_effect_vol";
+    lv2:name "Speed Effect Volume";
     units:unit units:db ;
     lv2:scalePoint [rdfs:label "Mute"; rdf:value -80];
     lv2:default -80;
@@ -329,13 +331,13 @@ lv2:port
 ],
 [
     a lv2:AudioPort, lv2:OutputPort;
-    lv2:index 25;
+    lv2:index 24;
     lv2:symbol "out_test";
     lv2:name "Out Test";
 ],
 [
     a lv2:AudioPort, lv2:OutputPort;
-    lv2:index 26;
+    lv2:index 25;
     lv2:symbol "out_test2";
     lv2:name "Out Test2";
 ].
