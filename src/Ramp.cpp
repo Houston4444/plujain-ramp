@@ -307,7 +307,11 @@ void Ramp::set_running_step(uint32_t step)
 
 float Ramp::get_tempo()
 {
-    return float(*host_tempo);
+    if (host_info){
+        return host_bpm;
+    } else {
+        return float(*host_tempo);
+    }
 }
 
 float Ramp::get_division()

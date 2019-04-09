@@ -15,7 +15,13 @@ To build and install just type: <br>
 `$ make clean && make` <br>
 `$ [sudo] make install`
 
-This plugin contains one audio input/output, and one midi input/output to allow user to synchronize multiples instances together.
+This plugin is provided in two versions: <strong>Plujain Ramp</strong> and <strong>Plujain Ramp Live</strong>.<br>
+<strong>Plujain Ramp</strong> contains one audio input/output, 
+tempo is based on host and it follows tranport. It's for use in DAW.<br>
+<strong>Plujain Ramp Live</strong> additionally contains one midi input/output
+to allow user to synchronize multiples instances together.
+it also can start effect with a threshold.
+
 
 Now let see the control ports and what they do:
 
@@ -29,8 +35,10 @@ Now let see the control ports and what they do:
     
 ----------
     
-<strong>Mode:</strong>
+<strong>Mode:</strong> (Plujain Ramp Live only)
 
+    
+    
     Always Active:
         Effect is always active, a Midi Start signal in midi_in will restart effect to the begginning.
         Midi Stop signals are ignored.
@@ -62,10 +70,10 @@ Now let see the control ports and what they do:
 
 ----------        
         
-<strong>Enter Threshold:</strong>
+<strong>Enter Threshold:</strong> (Plujain Ramp Live only)
     Only used in "Start With Threshold Mode", see "Mode/Start With Threshold"
 
-<strong>Leave Threshold:</strong>
+<strong>Leave Threshold:</strong> (Plujain Ramp Live only)
     Only used in "Start With Threshold Mode", see "Mode/Start With Threshold"
 
 ----------
@@ -83,10 +91,10 @@ Now let see the control ports and what they do:
 
 ----------
     
-<strong>Sync Tempo:</strong>
+<strong>Sync Tempo:</strong> (Plujain Ramp Live only)
     Set Tempo to the host tempo.
 
-<strong>Tempo:</strong>
+<strong>Tempo:</strong> (Plujain Ramp Live only)
     If you don't know what a tempo is, not sure that this plugin will help you !
     Ignored if "Sync Tempo" is checked.
 
@@ -131,19 +139,19 @@ Now let see the control ports and what they do:
 <strong>Volume:</strong>
     Volume of the effect. At -80dB, signal is totally muted. This way you can use this instance only for managing the other ones, Practical if you need many other effects when you use this tremolo.
 
-<strong>Speed Effect 1</strong>
+<strong>Speed Effect 1:</strong>
     Speed effect adds sound. It's not dependent of depth or volume.
     For example on "Octave -" , it plays the first half of the period two times slowly.
     This will gives an octaver consuming very few DSP resources.
     If the speed is faster than 1x (for example Octave+), it will sounds more as a pitched delay than as a pitch.
 
-<strong>Speed Effect 1 Vol</strong>
+<strong>Speed Effect 1 Vol:</strong>
     Volume of the speed effect 1 below. At -80dB, signal is totally muted.
     
-<strong>Speed Effect 2</strong>
+<strong>Speed Effect 2:</strong>
     Same as Speed Effect 1.
     
-<strong>Speed Effect 2 Vol</strong>
+<strong>Speed Effect 2 Vol:</strong>
     Volume of the speed effect 2 below. At -80dB, signal is totally muted.
 
 
