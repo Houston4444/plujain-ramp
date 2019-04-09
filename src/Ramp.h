@@ -40,7 +40,7 @@ typedef struct {
 class Ramp
 {
 public:
-    Ramp();
+    Ramp(double rate);
     virtual ~Ramp() {}
     static LV2_Handle instantiate(const LV2_Descriptor* descriptor, double samplerate, const char* bundle_path, const LV2_Feature* const* features);
     static void activate(LV2_Handle instance);
@@ -94,10 +94,10 @@ public:
     float *shape;
     float *depth;
     float *volume;
-    float *speed_effect;
-    float *speed_effect_vol;
-    float *out_test;
-    float *out_test2;
+    float *speed_effect_1;
+    float *speed_effect_1_vol;
+    float *speed_effect_2;
+    float *speed_effect_2_vol;
     
     double samplerate;
     
@@ -114,7 +114,7 @@ public:
     int ex_period_length;
     int period_cut;
     int period_audio_start;
-    int period_fake_start;
+    int period_last_reset;
     
     uint32_t running_step;
     uint32_t current_mode;
@@ -134,11 +134,10 @@ public:
     float last_global_factor_mem;
     float oct_period_factor;
     float oct_period_factor_mem;
-    float current_speed_effect;
-    float current_speed_effect_vol;
-    float current_sub_suboctave;
-    float current_suboctave;
-    float current_upoctave;
+    float current_speed_effect_1;
+    float current_speed_effect_1_vol;
+    float current_speed_effect_2;
+    float current_speed_effect_2_vol;
     bool has_pre_start;
     uint8_t n_period;
     bool ternary;

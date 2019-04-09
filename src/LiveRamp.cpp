@@ -1,10 +1,5 @@
 #include "LiveRamp.h"
 
-// #define MIN(a,b) ( (a) < (b) ? (a) : (b) )
-// #define MAX(a,b) ( (a) > (b) ? (a) : (b) )
-// #define RAIL(v, min, max) (MIN((max), MAX((min), (v))))
-// #define ROUND(v) (uint32_t(v + 0.5f))
-
 enum {BYPASS, FIRST_WAITING_PERIOD, WAITING_SIGNAL, FIRST_PERIOD, EFFECT, OUTING};
 enum {MODE_ACTIVE, MODE_THRESHOLD, MODE_HOST_TRANSPORT, MODE_MIDI, MODE_MIDI_BYPASS};
 
@@ -27,7 +22,7 @@ map_mem_uris (LV2_URID_Map* map, PluginURIs* uris)
 	uris->time_speed          = map->map (map->handle, LV2_TIME__speed);
 }
 
-LiveRamp::LiveRamp() : Ramp(){
+LiveRamp::LiveRamp(double rate) : Ramp(rate){
     is_live_ramp = true;
 }
 
@@ -79,7 +74,7 @@ void LiveRamp::connect_port(LV2_Handle instance, uint32_t port, void *data)
     enum {IN, MIDI_IN, OUT, MIDI_OUT,
       ACTIVE, MODE, ENTER_THRESHOLD, LEAVE_THRESHOLD, PRE_START, PRE_START_UNITS, BEAT_OFFSET,
       SYNC_BPM, HOST_TEMPO, TEMPO, DIVISION, MAX_DURATION, HALF_SPEED, DOUBLE_SPEED,
-      ATTACK, SHAPE, DEPTH, VOLUME, SPEED_EFFECT, SPEED_EFFECT_VOL, OUT_TEST, OUT_TEST2, PLUGIN_PORT_COUNT};
+      ATTACK, SHAPE, DEPTH, VOLUME, SPEED_EFFECT_1, SPEED_EFFECT_1_VOL, SPEED_EFFECT_2, SPEED_EFFECT_2_VOL, PLUGIN_PORT_COUNT};
 
     switch (port)
     {
@@ -149,17 +144,17 @@ void LiveRamp::connect_port(LV2_Handle instance, uint32_t port, void *data)
         case VOLUME:
             plugin->volume = (float*) data;
             break;
-        case SPEED_EFFECT:
-            plugin->speed_effect = (float*) data;
+        case SPEED_EFFECT_1:
+            plugin->speed_effect_1 = (float*) data;
             break;
-        case SPEED_EFFECT_VOL:
-            plugin->speed_effect_vol = (float*) data;
+        case SPEED_EFFECT_1_VOL:
+            plugin->speed_effect_1_vol = (float*) data;
             break;
-        case OUT_TEST:
-            plugin->out_test = (float*) data;
+        case SPEED_EFFECT_2:
+            plugin->speed_effect_2 = (float*) data;
             break;
-        case OUT_TEST2:
-            plugin->out_test2 = (float*) data;
+        case SPEED_EFFECT_2_VOL:
+            plugin->speed_effect_2_vol = (float*) data;
             break;
     }
 }
@@ -167,49 +162,9 @@ void LiveRamp::connect_port(LV2_Handle instance, uint32_t port, void *data)
 LV2_Handle LiveRamp::instantiate(const LV2_Descriptor* descriptor, double samplerate, const char* bundle_path, 
                   const LV2_Feature* const* features)
 {
-    LiveRamp *plugin = new LiveRamp();
+    LiveRamp *plugin = new LiveRamp(samplerate);
     
     plugin->samplerate = samplerate;
-    
-    plugin->period_count = 0;
-    plugin->period_length = 12000;
-    plugin->period_death = 12000;
-    plugin->taken_beat_offset = 0;
-    plugin->current_offset = 0;
-    
-    plugin->ex_active_state = false;
-    
-    plugin->default_fade = int(0.005 * samplerate);  /*  5ms */
-    plugin->threshold_time = int(0.05 * samplerate); /* 50ms */
-    
-    plugin->running_step = WAITING_SIGNAL;
-    plugin->current_mode = MODE_ACTIVE;
-    
-    plugin->waiting_enter_threshold = true;
-    plugin->leave_threshold_exceeded = false;
-    plugin->stop_request = false;
-    
-    plugin->current_volume = 1.0f;
-    plugin->current_depth = 1.0f;
-    plugin->current_sub_suboctave = 0.0f;
-    plugin->current_suboctave = 0.0f;
-    plugin->ex_volume = 1.0f;
-    plugin->ex_depth = 1.0f;
-    plugin->last_global_factor = 1.0f;
-    plugin->last_global_factor_mem = 1.0f;
-    plugin->oct_period_factor = 0.0f;
-    plugin->oct_period_factor_mem = 0.0f;
-    plugin->has_pre_start = false;
-    plugin->n_period = 1;
-    plugin->taken_by_groove = 0;
-    
-    plugin->instance_started_since = 0;
-    plugin->start_sent_after_start = false;
-    
-    plugin->host_was_playing = false;
-    
-//     size_t size = 1000000;
-    
     
     int i;
 	for (i=0; features[i]; ++i) {

@@ -82,7 +82,42 @@ update_position (Ramp* plugin, const LV2_Atom_Object* obj)
 }
 
 
-Ramp::Ramp(){
+Ramp::Ramp(double rate){
+    samplerate = rate;
+    default_fade = int(0.005 * samplerate);  /*  5ms */
+    threshold_time = int(0.05 * samplerate); /* 50ms */
+    period_count = 0;
+    period_length = default_fade;
+    period_death = period_length;
+    taken_beat_offset = 0;
+    current_offset = 0;
+    
+    ex_active_state = false;
+    
+    running_step = WAITING_SIGNAL;
+    current_mode = MODE_HOST_TRANSPORT;
+    
+    waiting_enter_threshold = true;
+    leave_threshold_exceeded = false;
+    stop_request = false;
+    
+    current_volume = 1.0f;
+    current_depth = 1.0f;
+    ex_volume = 1.0f;
+    ex_depth = 1.0f;
+    last_global_factor = 1.0f;
+    last_global_factor_mem = 1.0f;
+    oct_period_factor = 0.0f;
+    oct_period_factor_mem = 0.0f;
+    has_pre_start = false;
+    n_period = 1;
+    taken_by_groove = 0;
+    
+    instance_started_since = 0;
+    start_sent_after_start = false;
+    
+    host_was_playing = false;
+    
     is_live_ramp = false;
 }
 
@@ -101,42 +136,7 @@ float Ramp::get_leave_threshold(){
 LV2_Handle Ramp::instantiate(const LV2_Descriptor* descriptor, double samplerate, const char* bundle_path, 
                   const LV2_Feature* const* features)
 {
-    Ramp *plugin = new Ramp();
-    
-    plugin->samplerate = samplerate;
-    
-    plugin->period_count = 0;
-    plugin->period_length = 12000;
-    plugin->period_death = 12000;
-    plugin->taken_beat_offset = 0;
-    plugin->current_offset = 0;
-    
-    plugin->ex_active_state = false;
-    
-    plugin->default_fade = int(0.005 * samplerate);  /*  5ms */
-    plugin->threshold_time = int(0.05 * samplerate); /* 50ms */
-    
-    plugin->running_step = WAITING_SIGNAL;
-    plugin->current_mode = MODE_ACTIVE;
-    
-    plugin->waiting_enter_threshold = true;
-    plugin->leave_threshold_exceeded = false;
-    plugin->stop_request = false;
-    
-    plugin->current_volume = 1.0f;
-    plugin->current_depth = 1.0f;
-    plugin->ex_volume = 1.0f;
-    plugin->ex_depth = 1.0f;
-    plugin->last_global_factor = 1.0f;
-    plugin->last_global_factor_mem = 1.0f;
-    plugin->has_pre_start = false;
-    plugin->n_period = 1;
-    plugin->taken_by_groove = 0;
-    
-    plugin->instance_started_since = 0;
-    plugin->start_sent_after_start = false;
-    
-    plugin->host_was_playing = false;
+    Ramp *plugin = new Ramp(samplerate);
     
     int i;
 	for (i=0; features[i]; ++i) {
@@ -186,7 +186,7 @@ void Ramp::connect_port(LV2_Handle instance, uint32_t port, void *data)
 
     enum {IN, CTRL_IN, OUT, ACTIVE, PRE_START, PRE_START_UNITS, BEAT_OFFSET, HOST_TEMPO,
       DIVISION, MAX_DURATION, HALF_SPEED, DOUBLE_SPEED,
-      ATTACK, SHAPE, DEPTH, VOLUME, SPEED_EFFECT, SPEED_EFFECT_VOL, PLUGIN_PORT_COUNT};
+      ATTACK, SHAPE, DEPTH, VOLUME, SPEED_EFFECT_1, SPEED_EFFECT_1_VOL, SPEED_EFFECT_2, SPEED_EFFECT_2_VOL, PLUGIN_PORT_COUNT};
 
     switch (port)
     {
@@ -238,11 +238,17 @@ void Ramp::connect_port(LV2_Handle instance, uint32_t port, void *data)
         case VOLUME:
             plugin->volume = (float*) data;
             break;
-        case SPEED_EFFECT:
-            plugin->speed_effect = (float*) data;
+        case SPEED_EFFECT_1:
+            plugin->speed_effect_1 = (float*) data;
             break;
-        case SPEED_EFFECT_VOL:
-            plugin->speed_effect_vol = (float*) data;
+        case SPEED_EFFECT_1_VOL:
+            plugin->speed_effect_1_vol = (float*) data;
+            break;
+        case SPEED_EFFECT_2:
+            plugin->speed_effect_2 = (float*) data;
+            break;
+        case SPEED_EFFECT_2_VOL:
+            plugin->speed_effect_2_vol = (float*) data;
             break;
     }
 }
@@ -327,14 +333,14 @@ float Ramp::get_division()
             ternary = true;
             return 0.5f;
         case 10:
-            return 0.33333333333;
+            return 1/3.0f;
         case 11:
             return 0.25;
         case 12:
             ternary = true;
             return 0.25;
         case 13:
-            return 0.16666666667;
+            return 1/6.0f;
         case 14:
             return 0.125;
     }
@@ -424,7 +430,7 @@ void Ramp::start_period()
     
     period_audio_start += period_count;
     if (period_audio_start >= 480000){
-        period_fake_start = period_audio_start;
+        period_last_reset = period_audio_start;
         period_audio_start = 0;
     }
     
@@ -465,22 +471,10 @@ void Ramp::start_period()
         current_depth = RAIL(*depth, 0, 1);
     }
     
-    current_speed_effect = float(*speed_effect);
-    current_speed_effect_vol = powf(10.0f, (*speed_effect_vol)/20.0f);
-//     current_sub_suboctave = powf(10.0f, (*sub_suboctave)/20.0f);
-//     if (*sub_suboctave <= -80.0f){
-//         current_sub_suboctave = 0.0f;
-//     }
-//     
-//     current_suboctave = powf(10.0f, (*suboctave)/20.0f);
-//     if (*suboctave <= -80.0f){
-//         current_suboctave = 0.0f;
-//     }
-//     
-//     current_upoctave = powf(10.0f, (*upoctave)/20.0f);
-//     if (*upoctave <= -80.0f){
-//         current_upoctave = 0.0f;
-//     }
+    current_speed_effect_1 = float(*speed_effect_1);
+    current_speed_effect_1_vol = powf(10.0f, (*speed_effect_1_vol)/20.0f);
+    current_speed_effect_2 = float(*speed_effect_2);
+    current_speed_effect_2_vol = powf(10.0f, (*speed_effect_2_vol)/20.0f);
 }
 
 
@@ -504,10 +498,8 @@ float Ramp::get_fall_period_factor()
     if (period_count > period_death){
         return 0.0f;
     }
-    
     float period_factor = 1.0f;
-    int n_max = (period_death - period_peak) / default_fade;
-                    
+    int n_max = (period_death - period_peak) / default_fade;             
     float pre_factor = 1.00f - float(period_count - period_peak) 
                        / (float(period_death - period_peak));
     float shape = current_shape;
@@ -521,7 +513,7 @@ float Ramp::get_fall_period_factor()
     } else if (n_max < 4){
         shape = float(shape * 3/4);
     }
-                
+    
     if (current_shape > 0.0f){
         while (shape > 1.0f){
             pre_factor = sin(M_PI_2 * pre_factor);
@@ -558,8 +550,6 @@ float Ramp::get_shut_octave_factor()
         tmp_period_factor = oct_period_factor_mem
                             * (1 - period_count/float(default_fade));
     }
-    
-//     std::cout << tmp_period_factor << std::endl;
     return tmp_period_factor;
 }
 
@@ -570,8 +560,8 @@ float Ramp::get_octave_image_value(float speed, bool leaving){
     }
     
     int frame;
-    int count = period_count;
     int start = period_audio_start;
+    int count = period_count;
     int length_at_start = period_length_at_start;
     
     if (leaving){
@@ -580,9 +570,6 @@ float Ramp::get_octave_image_value(float speed, bool leaving){
         length_at_start = ex_period_length_at_start;
     }
     
-//     if (speed < 0){
-//         frame = start - count * speed;
-//         std::cout << frame << std::endl;
     if (speed <= 1){
         frame = start + count * speed;
     } else {
@@ -590,13 +577,12 @@ float Ramp::get_octave_image_value(float speed, bool leaving){
                 - (length_at_start - count) * speed;
     }
     
-    
     if (frame > period_audio_start + period_count){
         return 0.0f;
     }
     
     if (frame < 0){
-        frame += period_fake_start;
+        frame += period_last_reset;
         if (frame < period_audio_start + period_count){
             return 0.0f;
         }
@@ -615,7 +601,7 @@ float Ramp::get_octave_image_value(float speed, bool leaving){
         } else {
             int compare_frame = frame -1;
             if (compare_frame < 0){
-                compare_frame += period_fake_start;
+                compare_frame += period_last_reset;
             }
             
             value += (audio_memory[compare_frame] - audio_memory[frame]) * delta * speed;
@@ -624,42 +610,6 @@ float Ramp::get_octave_image_value(float speed, bool leaving){
     
     return value;
 }
-
-
-float Ramp::get_effect_up_octave_value()
-{
-    return get_octave_image_value(-4.0f, false);
-}
-
-float Ramp::get_effect_suboctave_value()
-{
-    return get_octave_image_value(0.5f, false);
-}
-
-
-float Ramp::get_effect_sub_suboctave_value()
-{
-    return get_octave_image_value(-2.0f, false);
-}
-
-
-float Ramp::get_shut_up_octave_value()
-{
-    return get_octave_image_value(-4.0f, true);
-}
-    
-
-float Ramp::get_shut_suboctave_value()
-{
-    return get_octave_image_value(0.5f, true);
-}
-
-
-float Ramp::get_shut_sub_suboctave_value()
-{
-    return get_octave_image_value(-2.0f, true);
-}
-
 
 void Ramp::send_midi_start_stop(bool start, uint32_t frame)
 {
@@ -680,7 +630,6 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
     plugin = (Ramp *) instance;
     
     if (plugin->is_live_ramp){
-//         std::cout << "zoefiz" << std::endl; 
         /* set midi_out for midi messages */
         const uint32_t capacity = plugin->midi_out->atom.size;
         lv2_atom_forge_set_buffer (&plugin->forge, (uint8_t*)plugin->midi_out, capacity);
@@ -722,12 +671,9 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
             }
         }
     }
-    
-    
 	
 	int start_sample = -1;
 	
-    
 	/* check midi input start/stop signal */
     if (active_state and plugin->is_live_ramp){
         LV2_Atom_Event const* midi_ev = (LV2_Atom_Event const*)((uintptr_t)((&(plugin->midi_in)->body) + 1)); // lv2_atom_sequence_begin
@@ -760,11 +706,6 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
         and plugin->current_mode == MODE_HOST_TRANSPORT
         and not (plugin->host_speed <= 0)){
             if (not plugin->host_was_playing){
-//                 std::cout << "azpeo" << std::endl;
-//                 std::cout << plugin->bar_beats << std::endl;
-//                 std::string s = std::to_string(plugin->bar_beats);
-//                 char const *pchar = s.c_str();
-//                 lv2_log_error (&plugin->logger, pchar);
                 plugin->set_running_step(FIRST_PERIOD);
             }
             plugin->host_was_playing = true;
@@ -782,7 +723,6 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
     if (leave_threshold > enter_threshold){
         leave_threshold = enter_threshold;
     }
-    
     
     bool node_found = false;
     
@@ -831,11 +771,8 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
         float d = plugin->current_depth;
         
         float oct_period_factor = 0;
-        
-        float speed_effect_value = 0;
-//         float suboctave_value = 0;
-//         float sub_suboctave_value = 0;
-//         float up_octave_value = 0;
+        float speed_effect_1_value = 0;
+        float speed_effect_2_value = 0;
         
         if (start_sample == int(i)){
             plugin->set_running_step(FIRST_PERIOD, i);
@@ -857,10 +794,8 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
                                   * plugin->period_count/float(plugin->period_length);
                 
                 oct_period_factor = plugin->get_shut_octave_factor();
-                speed_effect_value = plugin->get_octave_image_value(plugin->current_speed_effect, true);
-//                 suboctave_value = plugin->get_shut_suboctave_value() * oct_period_factor;
-//                 sub_suboctave_value = plugin->get_shut_sub_suboctave_value() * oct_period_factor;
-//                 up_octave_value = plugin->get_shut_up_octave_value() * oct_period_factor;
+                speed_effect_1_value = plugin->get_octave_image_value(plugin->current_speed_effect_1, true);
+                speed_effect_2_value = plugin->get_octave_image_value(plugin->current_speed_effect_2, true);
                 break;
                 
             case WAITING_SIGNAL:
@@ -904,31 +839,21 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
                                             / float(plugin->period_peak - plugin->default_fade);
                         }
                         oct_period_factor = plugin->get_shut_octave_factor();
-                        speed_effect_value = plugin->get_octave_image_value(plugin->current_speed_effect, true)
+                        speed_effect_1_value = plugin->get_octave_image_value(plugin->current_speed_effect_1, true)
                                                 * oct_period_factor
-                                             + plugin->get_octave_image_value(plugin->current_speed_effect, false)
+                                               + plugin->get_octave_image_value(plugin->current_speed_effect_1, false)
                                                 * plugin->period_count/float(plugin->period_peak);
-                                               
-//                         suboctave_value = plugin->get_shut_suboctave_value() * oct_period_factor
-//                                           + plugin->get_effect_suboctave_value()
-//                                             * plugin->period_count/float(plugin->period_peak);
-//                         sub_suboctave_value = plugin->get_shut_sub_suboctave_value()
-//                                                 * oct_period_factor
-//                                               + plugin->get_effect_sub_suboctave_value()
-//                                                 * plugin->period_count/float(plugin->period_peak);
-//                         up_octave_value = plugin->get_shut_up_octave_value()
-//                                             * oct_period_factor
-//                                           + plugin->get_effect_up_octave_value()
-//                                             * oct_period_factor;
-                        
+                        speed_effect_2_value = plugin->get_octave_image_value(plugin->current_speed_effect_2, true)
+                                                * oct_period_factor
+                                               + plugin->get_octave_image_value(plugin->current_speed_effect_2, false)
+                                                * plugin->period_count/float(plugin->period_peak);
                     } else {
                         period_factor = plugin->get_fall_period_factor();
                         oct_period_factor = period_factor;
-                        speed_effect_value = plugin->get_octave_image_value(plugin->current_speed_effect, false)
-                                             * oct_period_factor;
-//                         suboctave_value = plugin->get_effect_suboctave_value() * period_factor;
-//                         sub_suboctave_value = plugin->get_effect_sub_suboctave_value() * period_factor;
-//                         up_octave_value = plugin->get_effect_up_octave_value() * period_factor;
+                        speed_effect_1_value = plugin->get_octave_image_value(plugin->current_speed_effect_1, false)
+                                               * oct_period_factor;
+                        speed_effect_2_value = plugin->get_octave_image_value(plugin->current_speed_effect_2, false)
+                                               * oct_period_factor;
                     }
                 } else {
                     if (plugin->period_count < plugin->default_fade){
@@ -943,6 +868,10 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
                     }
                     
                     oct_period_factor = plugin->get_shut_octave_factor();
+                    speed_effect_1_value = plugin->get_octave_image_value(plugin->current_speed_effect_1, true)
+                                           * oct_period_factor;
+                    speed_effect_2_value = plugin->get_octave_image_value(plugin->current_speed_effect_2, true)
+                                           * oct_period_factor;
                 }
                 break;
                 
@@ -968,11 +897,10 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
                 }
                 
                 oct_period_factor = period_factor;
-                speed_effect_value = plugin->get_octave_image_value(plugin->current_speed_effect, false)
-                                     * oct_period_factor;
-//                 suboctave_value = plugin->get_effect_suboctave_value() * period_factor;
-//                 sub_suboctave_value = plugin->get_effect_sub_suboctave_value() * period_factor;
-//                 up_octave_value = plugin->get_effect_up_octave_value() * period_factor;
+                speed_effect_1_value = plugin->get_octave_image_value(plugin->current_speed_effect_1, false)
+                                       * oct_period_factor;
+                speed_effect_2_value = plugin->get_octave_image_value(plugin->current_speed_effect_2, false)
+                                       * oct_period_factor;
                 break;
                 
             case OUTING:
@@ -984,11 +912,10 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
                 
                 oct_period_factor = plugin->oct_period_factor_mem
                                     * (1 - plugin->period_count/float(plugin->default_fade));
-                speed_effect_value = plugin->get_octave_image_value(plugin->current_speed_effect, true)
-                                     * oct_period_factor;
-//                 suboctave_value = plugin->get_shut_suboctave_value() * oct_period_factor;
-//                 sub_suboctave_value = plugin->get_shut_sub_suboctave_value() * oct_period_factor;
-//                 up_octave_value = plugin->get_shut_up_octave_value() * oct_period_factor;
+                speed_effect_1_value = plugin->get_octave_image_value(plugin->current_speed_effect_1, true)
+                                       * oct_period_factor;
+                speed_effect_2_value = plugin->get_octave_image_value(plugin->current_speed_effect_2, true)
+                                       * oct_period_factor;
                 break;
         }
         
@@ -998,10 +925,8 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
         audio_memory[plugin->period_audio_start + plugin->period_count] = plugin->in[i];
         
         plugin->out[i] = plugin->in[i] * plugin->last_global_factor
-                        + speed_effect_value * plugin->current_speed_effect_vol;
-                        
-        plugin->out_test[i] = plugin->last_global_factor - 0.5;
-        plugin->out_test2[i] = speed_effect_value * plugin->current_speed_effect_vol;
+                        + speed_effect_1_value * plugin->current_speed_effect_1_vol
+                        + speed_effect_2_value * plugin->current_speed_effect_2_vol;
         
         plugin->period_count++;
         

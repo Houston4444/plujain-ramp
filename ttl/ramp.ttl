@@ -194,7 +194,7 @@ lv2:port
     lv2:index 12;
     lv2:symbol "attack";
     lv2:name "Attack";
-    lv2:default 4;
+    lv2:default 5;
     lv2:minimum 0.5;
     lv2:maximum 200;
     units:unit units:ms ;
@@ -231,8 +231,32 @@ lv2:port
 [
     a lv2:ControlPort, lv2:InputPort;
     lv2:index 16;
-    lv2:symbol "sub_suboctave";
-    lv2:name "Octave --";
+    lv2:symbol "speed_effect_1";
+    lv2:name "Speed Effect 1";
+    lv2:portProperty lv2:enumeration ;
+        lv2:scalePoint [rdfs:label "Octave ++ reverse"; rdf:value -4];
+        lv2:scalePoint [rdfs:label "Octave + Fifth reverse"; rdf:value -3.0];
+        lv2:scalePoint [rdfs:label "Octave + reverse"; rdf:value -2];
+        lv2:scalePoint [rdfs:label "Fifth reverse"; rdf:value -1.5];
+        lv2:scalePoint [rdfs:label "Reverse"; rdf:value -1];
+        lv2:scalePoint [rdfs:label "Octave - reverse"; rdf:value -0.5];
+        lv2:scalePoint [rdfs:label "Octave -- reverse"; rdf:value -0.25];
+        lv2:scalePoint [rdfs:label "Octave --"; rdf:value 0.25];
+        lv2:scalePoint [rdfs:label "Octave -"; rdf:value 0.5];
+        lv2:scalePoint [rdfs:label "Fifth -"; rdf:value 0.75];
+        lv2:scalePoint [rdfs:label "Fifth +"; rdf:value 1.5];
+        lv2:scalePoint [rdfs:label "Octave +"; rdf:value 2];
+        lv2:scalePoint [rdfs:label "Octave + Fifth"; rdf:value 3];
+        lv2:scalePoint [rdfs:label "Octave ++"; rdf:value 4];
+    lv2:default 0.5;
+    lv2:minimum -4;
+    lv2:maximum 4;
+],
+[
+    a lv2:ControlPort, lv2:InputPort;
+    lv2:index 17;
+    lv2:symbol "speed_effect_1_vol";
+    lv2:name "Speed Effect 1 Volume";
     units:unit units:db ;
     lv2:scalePoint [rdfs:label "Mute"; rdf:value -80];
     lv2:default -80;
@@ -241,9 +265,33 @@ lv2:port
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 17;
-    lv2:symbol "suboctave";
-    lv2:name "Octave -";
+    lv2:index 18;
+    lv2:symbol "speed_effect_2";
+    lv2:name "Speed Effect 2";
+    lv2:portProperty lv2:enumeration ;
+        lv2:scalePoint [rdfs:label "Octave ++ reverse"; rdf:value -4];
+        lv2:scalePoint [rdfs:label "Octave + Fifth reverse"; rdf:value -3.0];
+        lv2:scalePoint [rdfs:label "Octave + reverse"; rdf:value -2];
+        lv2:scalePoint [rdfs:label "Fifth reverse"; rdf:value -1.5];
+        lv2:scalePoint [rdfs:label "Reverse"; rdf:value -1];
+        lv2:scalePoint [rdfs:label "Octave - reverse"; rdf:value -0.5];
+        lv2:scalePoint [rdfs:label "Octave -- reverse"; rdf:value -0.25];
+        lv2:scalePoint [rdfs:label "Octave --"; rdf:value 0.25];
+        lv2:scalePoint [rdfs:label "Octave -"; rdf:value 0.5];
+        lv2:scalePoint [rdfs:label "Fifth -"; rdf:value 0.75];
+        lv2:scalePoint [rdfs:label "Fifth +"; rdf:value 1.5];
+        lv2:scalePoint [rdfs:label "Octave +"; rdf:value 2];
+        lv2:scalePoint [rdfs:label "Octave + Fifth"; rdf:value 3];
+        lv2:scalePoint [rdfs:label "Octave ++"; rdf:value 4];
+    lv2:default 2;
+    lv2:minimum -4;
+    lv2:maximum 4;
+],
+[
+    a lv2:ControlPort, lv2:InputPort;
+    lv2:index 19;
+    lv2:symbol "speed_effect_2_vol";
+    lv2:name "Speed Effect 2 Volume";
     units:unit units:db ;
     lv2:scalePoint [rdfs:label "Mute"; rdf:value -80];
     lv2:default -80;
