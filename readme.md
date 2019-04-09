@@ -3,6 +3,7 @@
 Plujain-Ramp is a mono rhythmic tremolo LV2 Audio Plugin.<br>
 Each period of the tremolo is made of one short fade in and one long fade out,<br>
 so we can say it generates musical pulses.<br>
+It can also generate pitched periods (see Speed Effect).<br>
 There is currently no GUI, but it's not really needed.<br>
 
 You can ear examples of how can sound the plugin here:<br>
