@@ -130,9 +130,20 @@ Now let see the control ports and what they do:
 <strong>Volume:</strong>
     Volume of the effect. At -80dB, signal is totally muted. This way you can use this instance only for managing the other ones, Practical if you need many other effects when you use this tremolo.
 
+<strong>Speed Effect 1</strong>
+    Speed effect adds sound. It's not dependent of depth or volume.
+    For example on "Octave -" , it plays the first half of the period two times slowly.
+    This will gives an octaver consuming very few DSP resources.
+    If the speed is faster than 1x (for example Octave+), it will sounds more as a pitched delay than as a pitch.
 
-
-
+<strong>Speed Effect 1 Vol</strong>
+    Volume of the speed effect 1 below. At -80dB, signal is totally muted.
+    
+<strong>Speed Effect 2</strong>
+    Same as Speed Effect 1.
+    
+<strong>Speed Effect 2 Vol</strong>
+    Volume of the speed effect 2 below. At -80dB, signal is totally muted.
 
 
 
