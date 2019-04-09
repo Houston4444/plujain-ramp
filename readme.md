@@ -12,7 +12,7 @@ https://soundcloud.com/user-420463073/sets/plujain-ramp-examples
 There are no particular dependencies except these ones needed to build an LV2 plugin.
 
 To build and install just type: <br>
-`$ make` <br>
+`$ make clean && make` <br>
 `$ [sudo] make install`
 
 This plugin contains one audio input/output, and one midi input/output to allow user to synchronize multiples instances together.
