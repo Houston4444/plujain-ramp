@@ -78,6 +78,10 @@ update_position (Ramp* plugin, const LV2_Atom_Object* obj)
 
 		plugin->bar_beats  = _bar * _bpb + _beat; // * host_div / 4.0 // TODO map host metrum
 		plugin->host_info  = true;
+        plugin->beats = _beat;
+        plugin->bar = _bar;
+        
+        plugin->restart_countdown = (_bpb - _beat) * (plugin->samplerate / plugin->host_bpm) * (plugin->host_div /4.0);
 	}
 }
 
@@ -704,7 +708,7 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
     
     if (active_state
         and plugin->current_mode == MODE_HOST_TRANSPORT
-        and not (plugin->host_speed <= 0)){
+        and (plugin->host_speed > 0)){
             if (not plugin->host_was_playing){
                 plugin->set_running_step(FIRST_PERIOD);
             }

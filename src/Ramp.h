@@ -154,6 +154,10 @@ public:
 	double   bar_beats;
 	float    host_speed;
 	int      host_div;
+    float    beats;
+    int64_t  bar;
+    
+    uint32_t restart_countdown;
     
     /* LV2 Output */
 	LV2_Log_Log* log;
