@@ -81,7 +81,13 @@ update_position (Ramp* plugin, const LV2_Atom_Object* obj)
         plugin->beats = _beat;
         plugin->bar = _bar;
         
-        plugin->restart_countdown = (_bpb - _beat) * (plugin->samplerate / plugin->host_bpm) * (plugin->host_div /4.0);
+        if (_beat == 0){
+            plugin->restart_countdown = 0;
+        } else {
+            plugin->restart_countdown = (_bpb - _beat)
+                                        * ((plugin->samplerate * 60) / plugin->host_bpm)
+                                        * (plugin->host_div /4.0);
+        }
 	}
 }
 
@@ -121,6 +127,8 @@ Ramp::Ramp(double rate){
     start_sent_after_start = false;
     
     host_was_playing = false;
+    restart_countdown = 0;
+    waiting_restart_on_bar = false;
     
     is_live_ramp = false;
 }
@@ -644,6 +652,7 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
         lv2_atom_forge_sequence_head (&plugin->forge, &plugin->frame, 0);
     }
         
+    
     /* process control events (for host transport) */
     LV2_Atom_Event* ev = lv2_atom_sequence_begin (&(plugin->midi_in)->body);
     while (!lv2_atom_sequence_is_end (&(plugin->midi_in)->body, (plugin->midi_in)->atom.size, ev)) {
@@ -714,10 +723,24 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
         and plugin->current_mode == MODE_HOST_TRANSPORT
         and (plugin->host_speed > 0)){
             if (not plugin->host_was_playing){
-                plugin->set_running_step(FIRST_PERIOD);
+                plugin->waiting_restart_on_bar = true;
             }
+            
+            if (plugin->waiting_restart_on_bar){
+                if (plugin->restart_countdown >= n_samples){
+                    plugin->restart_countdown -= n_samples;
+                } else {
+                    start_sample = int(plugin->restart_countdown);
+                    plugin->waiting_restart_on_bar = false;
+                }
+            }
+        
+//             if (not plugin->host_was_playing){
+//                 plugin->set_running_step(FIRST_PERIOD);
+//             }
             plugin->host_was_playing = true;
     }  else {
+        plugin->waiting_restart_on_bar = false;
         plugin->host_was_playing = false;
     }
     

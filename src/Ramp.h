@@ -158,6 +158,7 @@ public:
     int64_t  bar;
     
     uint32_t restart_countdown;
+    bool waiting_restart_on_bar;
     
     /* LV2 Output */
 	LV2_Log_Log* log;
