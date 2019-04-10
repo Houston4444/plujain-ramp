@@ -42,6 +42,7 @@ Now let see the control ports and what they do:
     Always Active:
         Effect is always active, a Midi Start signal in midi_in will restart effect to the begginning.
         Midi Stop signals are ignored.
+        Pre-start is tretead as a period.
 
     Start With Threshold:
         At start, out volume will be at the down of the Depth.
@@ -51,10 +52,12 @@ Now let see the control ports and what they do:
         If at the end of the effect period (last 50ms),
         signal in audio_in doesn't exceed "Leave Threshold", 
         effect will be still alive but restarted the next time "Input Threshold" is reached.
+        Pre-start is tretead as a period.
 
     Host Transport:
-        Still experimental. For the moment, effect will start at Transport Play.
-        There is certainly better to do.
+        Effect will be always active but restarted with the transport.
+        If transport "play" doesn't start at the begginning of a bar, effect will be restarted on the next bar.
+        During Pre-start, volume is at the down of the depth (depth at 100% => Mute, depth at 0 => Bypass).
     
     Midi In Slave:
         At start, out volume will be at the down of the Depth. 
@@ -62,10 +65,12 @@ Now let see the control ports and what they do:
         When midi_in receives a Midi Start signal, effect will start.
         When midi_in receives a Midi Stop signal,
         out volume will return to the down of the depth.
+        During Pre-start, volume is at the down of the depth (depth at 100% => Mute, depth at 0 => Bypass).
 
     Midi In Slave / Stop is Bypass:
         Same as Midi In Slave except that at start the effect is bypassed.
         a stop signal in midi_in will make it go back to bypass.
+        Pre-start is tretead as a period.
 
 
 ----------        
@@ -143,7 +148,15 @@ Now let see the control ports and what they do:
     Speed effect adds sound. It's not dependent of depth or volume.
     For example on "Octave -" , it plays the first half of the period two times slowly.
     This will gives an octaver consuming very few DSP resources.
-    If the speed is faster than 1x (for example Octave+), it will sounds more as a pitched delay than as a pitch.
+    If the speed is faster than 1x (for example Octave+), it will sounds more as a pitched delay than as a pitch,
+    except that the delay time depends on when the attack appears !
+    Effect will take the required audio time in the past to fill the period :
+    for Octave+ (x2 speed), it will take all the previous period (more exactly the same time as the period before the period start)
+    and the current period and stretch it.
+    This explains why an attack at the start of the period will be repeated at half,
+    and at the start of the next period.
+    An attack at half of the period will be repeated at 3/4, and at 1/4 of the next period.
+    Hard to anticipate but often beautiful.
 
 <strong>Speed Effect 1 Vol:</strong>
     Volume of the speed effect 1 below. At -80dB, signal is totally muted.
