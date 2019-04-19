@@ -609,20 +609,20 @@ float Ramp::get_octave_image_value(float speed, bool leaving){
     }
     
     float value = audio_memory[frame];
-    if (abs(speed) < 1){
-        /* create inter samples */
-        int delta = period_count % int(1/abs(speed)); /* speed can't be 0 here */
-        if (speed > 0){
-            value += (audio_memory[frame+1] - audio_memory[frame]) * delta * speed;
-        } else {
-            int compare_frame = frame -1;
-            if (compare_frame < 0){
-                compare_frame += period_last_reset;
-            }
-            
-            value += (audio_memory[compare_frame] - audio_memory[frame]) * delta * speed;
-        }
-    }
+//     if (abs(speed) < 1){
+//         /* create inter samples */
+//         int delta = period_count % int(1/abs(speed)); /* speed can't be 0 here */
+//         if (speed > 0){
+//             value += (audio_memory[frame+1] - audio_memory[frame]) * delta * speed;
+//         } else {
+//             int compare_frame = frame -1;
+//             if (compare_frame < 0){
+//                 compare_frame += period_last_reset;
+//             }
+//             
+//             value += (audio_memory[compare_frame] - audio_memory[frame]) * delta * speed;
+//         }
+//     }
     
     return value;
 }
@@ -929,7 +929,7 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
                 
                 oct_period_factor = period_factor;
                 speed_effect_1_value = plugin->get_octave_image_value(plugin->current_speed_effect_1, false)
-                                       * oct_period_factor;
+                                        * oct_period_factor;
                 speed_effect_2_value = plugin->get_octave_image_value(plugin->current_speed_effect_2, false)
                                        * oct_period_factor;
                 break;
