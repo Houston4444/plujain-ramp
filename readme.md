@@ -20,7 +20,7 @@ This plugin is provided in two versions: <strong>Plujain Ramp</strong> and <stro
 tempo is based on host and it follows tranport. It's for use in DAW.<br>
 <strong>Plujain Ramp Live</strong> additionally contains one midi input/output
 to allow user to synchronize multiples instances together.
-it also can start effect with a threshold.
+It also can start effect with a threshold.
 
 
 Now let see the control ports and what they do:
