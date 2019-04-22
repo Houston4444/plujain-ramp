@@ -73,7 +73,8 @@ lv2:port
     a lv2:InputPort, lv2:ControlPort ;
     lv2:index 4;
     lv2:symbol "on" ;
-    lv2:name "Active" ;
+    lv2:name "Active" ,
+        "Actif"@fr ;
     lv2:default 1 ;
     lv2:minimum 0 ;
     lv2:maximum 1 ;
@@ -85,10 +86,11 @@ lv2:port
     a lv2:ControlPort, lv2:InputPort;
     lv2:index 5;
     lv2:symbol "mode";
-    lv2:name "Mode";
+    lv2:name "Mode" ,
+        "Mode"@fr ;
     lv2:portProperty lv2:integer;
     lv2:portProperty lv2:enumeration ;
-        lv2:scalePoint [rdfs:label "Always Active"; rdf:value 0];
+        lv2:scalePoint [rdfs:label "Always Active", "Toujours Actif"@fr; rdf:value 0];
         lv2:scalePoint [rdfs:label "Start with Threshold"; rdf:value 1];
         lv2:scalePoint [rdfs:label "Host Transport"; rdf:value 2];
         lv2:scalePoint [rdfs:label "Midi In Slave"; rdf:value 3];
@@ -101,7 +103,8 @@ lv2:port
     a lv2:ControlPort, lv2:InputPort;
     lv2:index 6;
     lv2:symbol "enter_treshold";
-    lv2:name "Enter Threshold";
+    lv2:name "Enter Threshold" ,
+        "Seuil d'Entrée"@fr ;
     units:unit units:db ;
     lv2:default -40;
     lv2:minimum -80;
@@ -111,7 +114,8 @@ lv2:port
     a lv2:ControlPort, lv2:InputPort;
     lv2:index 7;
     lv2:symbol "leave_treshold";
-    lv2:name "Leave Threshold";
+    lv2:name "Leave Threshold",
+        "Seuil de Sortie"@fr ;
     units:unit units:db ;
     lv2:default -65;
     lv2:minimum -80;
@@ -121,7 +125,8 @@ lv2:port
     a lv2:InputPort, lv2:ControlPort ;
     lv2:index 8 ;
     lv2:symbol "pre_start" ;
-    lv2:name "Pre Start" ;
+    lv2:name "Pre Start" ,
+        "Pré-démarrage"@fr ;
     lv2:default 0 ;
     lv2:minimum 0 ;
     lv2:maximum 32 ;
@@ -131,7 +136,8 @@ lv2:port
     a lv2:ControlPort, lv2:InputPort;
     lv2:index 9;
     lv2:symbol "pre_start_units";
-    lv2:name "Pre Start Units";
+    lv2:name "Pre Start Units",
+        "Unités du Pré-démarrage"@fr ;
     lv2:portProperty lv2:integer;
     lv2:portProperty lv2:enumeration ;
         lv2:scalePoint [rdfs:label "beat"; rdf:value 1];
@@ -148,7 +154,8 @@ lv2:port
     a lv2:ControlPort, lv2:InputPort;
     lv2:index 10;
     lv2:symbol "beat_offset";
-    lv2:name "Beat Offset";
+    lv2:name "Beat Offset",
+        "Placement"@fr ;
     lv2:default 0;
     lv2:minimum -1;
     lv2:maximum 1;
@@ -157,7 +164,8 @@ lv2:port
     a lv2:InputPort, lv2:ControlPort ;
     lv2:index 11;
     lv2:symbol "temposync" ;
-    lv2:name "Sync Tempo" ;
+    lv2:name "Sync Tempo", 
+        "Tempo Synchronisé"@fr ;
     lv2:default 1 ;
     lv2:minimum 0 ;
     lv2:maximum 1 ;
@@ -182,7 +190,8 @@ lv2:port
     a lv2:ControlPort, lv2:InputPort;
     lv2:index 13;
     lv2:symbol "tempo";
-    lv2:name "Tempo";
+    lv2:name "Tempo",
+        "Tempo"@fr ;
 #     lv2:portProperty lv2:integer;
     lv2:default 120;
     lv2:minimum 20;
@@ -192,7 +201,8 @@ lv2:port
     a lv2:ControlPort, lv2:InputPort;
     lv2:index 14;
     lv2:symbol "division";
-    lv2:name "Division";
+    lv2:name "Division",
+        "Division"@fr ;
     lv2:portProperty lv2:integer;
     lv2:portProperty lv2:enumeration ;
         lv2:scalePoint [rdfs:label "8beats"; rdf:value 0];
@@ -218,7 +228,8 @@ lv2:port
     a lv2:ControlPort, lv2:InputPort;
     lv2:index 15;
     lv2:symbol "max_duration";
-    lv2:name "Max Duration";
+    lv2:name "Max Duration",
+        "Durée Maximale"@fr ;
         lv2:scalePoint [rdfs:label "beat/32"; rdf:value 0.03125];
         lv2:scalePoint [rdfs:label "beat/16"; rdf:value 0.0625];
         lv2:scalePoint [rdfs:label "beat/8"; rdf:value 0.125];
@@ -236,7 +247,8 @@ lv2:port
     a lv2:InputPort, lv2:ControlPort ;
     lv2:index 16;
     lv2:symbol "half_speed" ;
-    lv2:name "Half Speed" ;
+    lv2:name "Half Speed",
+        "Demi Vitesse"@fr ;
     lv2:default 0 ;
     lv2:minimum 0 ;
     lv2:maximum 1 ;
@@ -247,7 +259,8 @@ lv2:port
     a lv2:InputPort, lv2:ControlPort ;
     lv2:index 17;
     lv2:symbol "double_speed" ;
-    lv2:name "Double Speed" ;
+    lv2:name "Double Speed",
+        "Double Vitesse"@fr ;
     lv2:default 0 ;
     lv2:minimum 0 ;
     lv2:maximum 1 ;
@@ -259,7 +272,8 @@ lv2:port
     a lv2:ControlPort, lv2:InputPort;
     lv2:index 18;
     lv2:symbol "attack";
-    lv2:name "Attack";
+    lv2:name "Attack",
+        "Attaque"@fr ;
     lv2:default 5;
     lv2:minimum 0.5;
     lv2:maximum 200;
@@ -269,7 +283,8 @@ lv2:port
     a lv2:ControlPort, lv2:InputPort;
     lv2:index 19;
     lv2:symbol "shape";
-    lv2:name "Shape";
+    lv2:name "Shape",
+        "Forme"@fr ;
     lv2:default 0;
     lv2:minimum -4;
     lv2:maximum 4;
@@ -278,7 +293,8 @@ lv2:port
     a lv2:ControlPort, lv2:InputPort;
     lv2:index 20;
     lv2:symbol "depth";
-    lv2:name "Depth";
+    lv2:name "Depth",
+        "Profondeur"@fr ;
     lv2:default 1;
     lv2:minimum 0;
     lv2:maximum 1;
@@ -287,7 +303,8 @@ lv2:port
     a lv2:ControlPort, lv2:InputPort;
     lv2:index 21;
     lv2:symbol "volume";
-    lv2:name "Volume";
+    lv2:name "Volume",
+        "Volume"@fr ;
     units:unit units:db ;
     lv2:scalePoint [rdfs:label "Mute"; rdf:value -80];
     lv2:default 0;
@@ -298,7 +315,8 @@ lv2:port
     a lv2:ControlPort, lv2:InputPort;
     lv2:index 22;
     lv2:symbol "speed_effect_1";
-    lv2:name "Speed Effect 1";
+    lv2:name "Speed Effect 1",
+        "Effet de Vitesse 1"@fr ;
     lv2:portProperty lv2:enumeration ;
         lv2:scalePoint [rdfs:label "Octave ++ reverse"; rdf:value -4];
         lv2:scalePoint [rdfs:label "Octave + Fifth reverse"; rdf:value -3.0];
@@ -322,7 +340,8 @@ lv2:port
     a lv2:ControlPort, lv2:InputPort;
     lv2:index 23;
     lv2:symbol "speed_effect_1_vol";
-    lv2:name "Speed Effect 1 Volume";
+    lv2:name "Speed Effect 1 Volume",
+        "Effet de Vitesse 1 Volume"@fr ;
     units:unit units:db ;
     lv2:scalePoint [rdfs:label "Mute"; rdf:value -80];
     lv2:default -80;
@@ -333,7 +352,8 @@ lv2:port
     a lv2:ControlPort, lv2:InputPort;
     lv2:index 24;
     lv2:symbol "speed_effect_2";
-    lv2:name "Speed Effect 2";
+    lv2:name "Speed Effect 2",
+        "Effet de Vitesse 2"@fr;
     lv2:portProperty lv2:enumeration ;
         lv2:scalePoint [rdfs:label "Octave ++ reverse"; rdf:value -4];
         lv2:scalePoint [rdfs:label "Octave + Fifth reverse"; rdf:value -3.0];
@@ -357,7 +377,8 @@ lv2:port
     a lv2:ControlPort, lv2:InputPort;
     lv2:index 25;
     lv2:symbol "speed_effect_2_vol";
-    lv2:name "Speed Effect 2 Volume";
+    lv2:name "Speed Effect 2 Volume",
+        "Effet de Vitesse 2 Volume"@fr;
     units:unit units:db ;
     lv2:scalePoint [rdfs:label "Mute"; rdf:value -80];
     lv2:default -80;
