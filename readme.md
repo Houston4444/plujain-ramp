@@ -20,7 +20,13 @@ This plugin is provided in two versions: <strong>Plujain Ramp</strong> and <stro
 tempo is based on host and it follows tranport. It's for use in DAW.<br>
 <strong>Plujain Ramp Live</strong> additionally contains one midi input/output
 to allow user to synchronize multiples instances together.
-It also can start effect with a threshold.
+It also can start effect with a threshold.<br>
+
+To synchronize multiples instances of Plujain Ramp Live, the better method is to use one instance as the master one.<br>
+The midi output of this master instance has to be connected to all midi inputs of slave instances.<br>
+The master instance should be in "always active" or "Start with threshold" mode, the slaves instances in "Midi in Slave".<br>
+Tip: if you want to apply this effect to distorded or high reverb effects, but you want a reactiv "Start with threshold" mode,<br>you can simply connect the instrument source to the audio input of the master instance and not connect its audio output,<br> then set one slave instance to "Midi in slave/Stop is bypass" mode.<br> 
+
 
 
 Now let see the control ports and what they do:
