@@ -36,8 +36,13 @@ doap:license <GPL>;
 
 rdfs:comment """
 mono ramp tremolo
-
-""";
+To synchronize multiples instances of Plujain Ramp Live, the better method is to use one instance as the master one.
+The midi output of this master instance has to be connected to all midi inputs of slave instances.
+The master instance should be in "always active" or "Start with threshold" mode, the slaves instances in "Midi in Slave".
+Tip: if you want to apply this effect to distorded or high reverb effects, but you want a reactiv "Start with threshold" mode,you can simply connect the instrument source to the audio input of the master instance and not connect its audio output,then set one slave instance to "Midi in slave/Stop is bypass" mode.
+""",
+"""La meilleure méthode pour synchroniser plusieurs instances de Plujain Ramp Live est d'utiliser une instance comme maître et toutes les autres comme esclaves. Connectez la sortie midi de l'instance maître à l'entrée midi de chaque esclave, réglez l'instance maître sur le mode "Always Active" ou "Start with Threshold" et les instances esclaves sur le mode "Midi In Slave".
+Astuce: Si vous voulez appliquer l'effet à un son passé dans une distortion ou une grosse reverberation mais que vous voulez que le mode "Start With Threshold" soit bien réactif, connectez directement la source de l'instrument sur l'entrée audio de l'instance maître sans connecter sa sortie, puis réglez une instance esclave sur le mode "Midi In Slave/Stop is Bypass"."""@fr;
 
 lv2:port
 [

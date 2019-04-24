@@ -16,8 +16,6 @@ enum {BYPASS, FIRST_WAITING_PERIOD, WAITING_SIGNAL, FIRST_PERIOD, EFFECT, OUTING
 enum {MODE_ACTIVE, MODE_THRESHOLD, MODE_HOST_TRANSPORT, MODE_MIDI, MODE_MIDI_BYPASS};
 
 float audio_memory[960000]; /*max 10s of audio save in 96000 */
-uint32_t max_audio = 12000;
-// uint32_t 
 
 static void
 map_mem_uris (LV2_URID_Map* map, PluginURIs* uris)
@@ -94,39 +92,63 @@ update_position (Ramp* plugin, const LV2_Atom_Object* obj)
 
 Ramp::Ramp(double rate){
     samplerate = rate;
+    
+    period_count = 0;
     default_fade = int(0.005 * samplerate);  /*  5ms */
     threshold_time = int(0.05 * samplerate); /* 50ms */
-    period_count = 0;
     period_length = default_fade;
+    ex_period_length = period_length;
+    period_length_at_start = period_length;
+    ex_period_length_at_start = period_length;
     period_death = period_length;
+    period_peak = default_fade;
     taken_beat_offset = 0;
     current_offset = 0;
-    
-    ex_active_state = false;
+    period_cut = 0;
+    period_audio_start = 0;
+    period_last_reset = 0;
     
     running_step = WAITING_SIGNAL;
     current_mode = MODE_HOST_TRANSPORT;
+    
+    ex_active_state = false;
     
     waiting_enter_threshold = true;
     leave_threshold_exceeded = false;
     stop_request = false;
     
-    current_volume = 1.0f;
+    current_shape = 0.0f;
     current_depth = 1.0f;
+    current_volume = 1.0f;
     ex_volume = 1.0f;
     ex_depth = 1.0f;
     last_global_factor = 1.0f;
     last_global_factor_mem = 1.0f;
     oct_period_factor = 0.0f;
     oct_period_factor_mem = 0.0f;
+    current_speed_effect_1 = 0.5f;
+    current_speed_effect_1_vol = 0.0f;
+    current_speed_effect_2 = 2.0f;
+    current_speed_effect_2_vol = 0.0f;
+    
     has_pre_start = false;
     n_period = 1;
+    ternary = false;
     taken_by_groove = 0;
     
     instance_started_since = 0;
     start_sent_after_start = false;
     
     host_was_playing = false;
+    
+    host_info = false;
+    host_bpm = 120.00f;
+    bar_beats = 0.0;
+    host_speed = 0.0f;
+    host_div = 4;
+    beats = 0.0f;
+    bar = 0;
+    
     restart_countdown = 0;
     waiting_restart_on_bar = false;
     
@@ -575,7 +597,7 @@ float Ramp::get_octave_image_value(float speed, bool leaving){
         return 0.0f;
     }
     
-    int frame;
+    float float_frame;
     int start = period_audio_start;
     int count = period_count;
     int length_at_start = period_length_at_start;
@@ -587,45 +609,36 @@ float Ramp::get_octave_image_value(float speed, bool leaving){
     }
     
     if (speed <= 1){
-        frame = start + count * speed;
+        float_frame = start + count * speed;
     } else {
-        frame = start + length_at_start
+        float_frame = start + length_at_start
                 - (length_at_start - count) * speed;
     }
     
-    if (frame > period_audio_start + period_count){
+    if (float_frame > period_audio_start + period_count){
+        /* calling futur frame, impossible */
         return 0.0f;
     }
     
-    if (frame < 0){
-        frame += period_last_reset;
-        if (frame < period_audio_start + period_count){
+    if (float_frame < 0){
+        float_frame += period_last_reset;
+        if (float_frame < period_audio_start + period_count){
             return 0.0f;
         }
     }
     
-    if (frame > 960000){
+    if (float_frame > 960000){
         return 0.0f;
     }
+
+    int frame1 = int(float_frame);
+    int frame2 = frame1 +1;
+//     if (frame1 == period_last_reset -1){
+//         frame2 = 0;
+//     }
     
-    float value = audio_memory[uint32_t(frame)];
-    
-    if (abs(speed) < 1.0f){
-        /* create inter samples */
-        int delta = period_count % int(1/abs(speed)); /* speed can't be 0 here */
-        if (delta != 0){
-            if (speed > 0.0f){
-                value += (audio_memory[frame+1] - audio_memory[frame]) * delta * speed;
-            } else {
-                int compare_frame = frame -1;
-                if (compare_frame < 0){
-                    compare_frame += period_last_reset;
-                }
-                
-                value += float((audio_memory[compare_frame] - audio_memory[frame]) * delta * speed);
-            }
-        }
-    }
+    float frame_offset = float_frame - frame1;
+    float value = audio_memory[frame1] * (1 - frame_offset) + audio_memory[frame2] * frame_offset;
     
     return value;
 }
@@ -800,6 +813,9 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
     
     for ( uint32_t i = 0; i < n_samples; i++)
     {
+        /* save audio sample */
+        audio_memory[plugin->period_audio_start + plugin->period_count] = plugin->in[i];
+        
         float period_factor = 1;
         float v = plugin->current_volume;
         float d = plugin->current_depth;
@@ -956,7 +972,7 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
         plugin->last_global_factor = (1 - (1-period_factor) * d) * v;
         plugin->oct_period_factor = oct_period_factor;
         
-        audio_memory[plugin->period_audio_start + plugin->period_count] = plugin->in[i];
+        
         
         plugin->out[i] = plugin->in[i] * plugin->last_global_factor
                         + speed_effect_1_value * plugin->current_speed_effect_1_vol
