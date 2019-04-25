@@ -101,6 +101,8 @@ public:
     
     double samplerate;
     
+    float audio_memory[960000];
+    
     int period_count;
     int period_length;
     int period_length_at_start;

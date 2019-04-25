@@ -15,7 +15,7 @@
 enum {BYPASS, FIRST_WAITING_PERIOD, WAITING_SIGNAL, FIRST_PERIOD, EFFECT, OUTING};
 enum {MODE_ACTIVE, MODE_THRESHOLD, MODE_HOST_TRANSPORT, MODE_MIDI, MODE_MIDI_BYPASS};
 
-float audio_memory[960000]; /*max 10s of audio save in 96000 */
+// float audio_memory[960000]; /*max 10s of audio save in 96000 */
 
 static void
 map_mem_uris (LV2_URID_Map* map, PluginURIs* uris)
@@ -814,7 +814,7 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
     for ( uint32_t i = 0; i < n_samples; i++)
     {
         /* save audio sample */
-        audio_memory[plugin->period_audio_start + plugin->period_count] = plugin->in[i];
+        plugin->audio_memory[plugin->period_audio_start + plugin->period_count] = plugin->in[i];
         
         float period_factor = 1;
         float v = plugin->current_volume;
