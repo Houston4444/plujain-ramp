@@ -15,8 +15,6 @@
 enum {BYPASS, FIRST_WAITING_PERIOD, WAITING_SIGNAL, FIRST_PERIOD, EFFECT, OUTING};
 enum {MODE_ACTIVE, MODE_THRESHOLD, MODE_HOST_TRANSPORT, MODE_MIDI, MODE_MIDI_BYPASS};
 
-// float audio_memory[960000]; /*max 10s of audio save in 96000 */
-
 static void
 map_mem_uris (LV2_URID_Map* map, PluginURIs* uris)
 {
@@ -108,7 +106,7 @@ Ramp::Ramp(double rate){
     period_audio_start = 0;
     period_last_reset = 0;
     
-    running_step = WAITING_SIGNAL;
+    running_step = BYPASS;
     current_mode = MODE_HOST_TRANSPORT;
     
     ex_active_state = false;
