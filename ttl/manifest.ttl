@@ -8,3 +8,5 @@
 <http://plujain/plugins/ramp_live> a lv2:Plugin;
     lv2:binary <ramp.so> ;
     rdfs:seeAlso <ramp_live.ttl>.
+<http://plujain/plugins/ramp_live> rdfs:seeAlso <modgui.ttl> .
+<http://plujain/plugins/ramp> rdfs:seeAlso <modgui.ttl> .

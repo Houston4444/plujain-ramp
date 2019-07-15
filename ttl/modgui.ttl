@@ -1,0 +1,74 @@
+@prefix modgui: <http://moddevices.com/ns/modgui#> .
+@prefix lv2:    <http://lv2plug.in/ns/lv2core#> .
+
+<http://plujain/plugins/ramp>
+    modgui:gui [
+        modgui:resourcesDirectory <modgui> ;
+        modgui:iconTemplate <modgui/icon-plujain-ramp.html> ;
+        modgui:stylesheet <modgui/stylesheet-plujain-ramp.css> ;
+        modgui:screenshot <modgui/screenshot-plujain-ramp.png> ;
+        modgui:thumbnail <modgui/thumbnail-plujain-ramp.png> ;
+        modgui:brand "Plujain" ;
+        modgui:label "Ramp" ;
+        modgui:model "boxy" ;
+        modgui:panel "1-select-4-knobs" ;
+        modgui:color "wood0" ;
+        modgui:knob "bronze" ;
+        modgui:port [
+            lv2:index 0 ;
+            lv2:symbol "division" ;
+            lv2:name "Division" ;
+        ] , [
+            lv2:index 1 ;
+            lv2:symbol "max_duration" ;
+            lv2:name "Duration" ;
+        ] , [
+            lv2:index 2 ;
+            lv2:symbol "attack" ;
+            lv2:name "Attack" ;
+        ] , [
+            lv2:index 3 ;
+            lv2:symbol "shape" ;
+            lv2:name "Shape" ;
+        ] , [
+            lv2:index 4 ;
+            lv2:symbol "depth" ;
+            lv2:name "Depth" ;
+        ] ;
+    ] .
+    
+<http://plujain/plugins/ramp_live>
+    modgui:gui [
+        modgui:resourcesDirectory <modgui> ;
+        modgui:iconTemplate <modgui/icon-plujain-ramp-live.html> ;
+        modgui:stylesheet <modgui/stylesheet-plujain-ramp-live.css> ;
+        modgui:screenshot <modgui/screenshot-plujain-ramp-live.png> ;
+        modgui:thumbnail <modgui/thumbnail-plujain-ramp-live.png> ;
+        modgui:brand "Plujain" ;
+        modgui:label "Ramp Live" ;
+        modgui:model "boxy" ;
+        modgui:panel "1-select-4-knobs" ;
+        modgui:color "gold" ;
+        modgui:knob "black" ;
+        modgui:port [
+            lv2:index 0 ;
+            lv2:symbol "division" ;
+            lv2:name "Division" ;
+        ] , [
+            lv2:index 1 ;
+            lv2:symbol "max_duration" ;
+            lv2:name "Duration" ;
+        ] , [
+            lv2:index 2 ;
+            lv2:symbol "attack" ;
+            lv2:name "Attack" ;
+        ] , [
+            lv2:index 3 ;
+            lv2:symbol "shape" ;
+            lv2:name "Shape" ;
+        ] , [
+            lv2:index 4 ;
+            lv2:symbol "depth" ;
+            lv2:name "Depth" ;
+        ] ;
+    ] .
