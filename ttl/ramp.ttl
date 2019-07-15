@@ -30,7 +30,7 @@ doap:maintainer [
     ];
 
     lv2:minorVersion 1;
-    lv2:microVersion 1;
+    lv2:microVersion 3;
 
 doap:license <GPL>;
 
