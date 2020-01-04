@@ -147,6 +147,9 @@ Ramp::Ramp(double rate){
     beats = 0.0f;
     bar = 0;
     
+    note_pressed = false;
+    active_note = 30;
+    
     restart_countdown = 0;
     waiting_restart_on_bar = false;
     
@@ -210,6 +213,9 @@ void Ramp::activate(LV2_Handle instance)
 void Ramp::deactivate(LV2_Handle instance)
 {
     // TODO: include the deactivate function code here
+//     Ramp *plugin;
+//     plugin = (Ramp *) instance;
+//     plugin->send_midi_note_off(0);
 }
         
 
@@ -660,6 +666,11 @@ void Ramp::send_midi_note(uint32_t frame)
     return;
 }
 
+void Ramp::send_midi_note_off(uint32_t frame)
+{
+    return;
+}
+
 /**********************************************************************************************************************************************************/
 
 void Ramp::run(LV2_Handle instance, uint32_t n_samples)
@@ -768,6 +779,7 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
     
     if (plugin->ex_active_state and not active_state){
         plugin->set_running_step(OUTING);
+        plugin->send_midi_note_off(0);
     }
     
     float enter_threshold = plugin->get_enter_threshold();
@@ -871,6 +883,11 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
                         or plugin->current_mode == MODE_ACTIVE
                         or plugin->current_mode == MODE_THRESHOLD
                         or plugin->current_mode == MODE_MIDI_BYPASS){
+                    
+                    if (plugin->period_count == 0){
+                        plugin->send_midi_note(i);
+                    }
+                    
                     if (plugin->period_count < plugin->period_peak){
                         if (plugin->period_peak <= (2 * plugin->default_fade)){
                             /* fade from last_global_factor_mem to peak */
@@ -911,6 +928,11 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
                         speed_effect_2_value = plugin->get_octave_image_value(plugin->current_speed_effect_2, false)
                                                * oct_period_factor;
                     }
+                    
+                    if (plugin->period_count == plugin->period_death){
+                        plugin->send_midi_note_off(i);
+                    }
+                    
                 } else {
                     if (plugin->period_count < plugin->default_fade){
                         v = 1;
@@ -932,6 +954,10 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
                 break;
                 
             case EFFECT:
+                if (plugin->period_count == 0){
+                    plugin->send_midi_note(i);
+                }
+                
                 if (plugin->period_count < plugin->period_peak){
                     period_factor = float(plugin->period_count)/float(plugin->period_peak);
                     v = plugin->ex_volume
@@ -950,6 +976,10 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
                     }
                     
                     period_factor = plugin->get_fall_period_factor();
+                }
+                
+                if (plugin->period_count == plugin->period_death){
+                    plugin->send_midi_note_off(i);
                 }
                 
                 oct_period_factor = period_factor;
@@ -999,7 +1029,6 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
                     break;
             }
             
-            plugin->send_midi_note(i);
             plugin->start_period();
             
             if (active_state

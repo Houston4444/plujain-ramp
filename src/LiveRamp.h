@@ -15,6 +15,7 @@ public:
     uint8_t get_midi_note();
     void send_midi_start_stop(bool start, uint32_t frame);
     void send_midi_note(uint32_t frame);
+    void send_midi_note_off(uint32_t frame);
     float *sync_bpm;
     float *tempo;
     float *midi_note;

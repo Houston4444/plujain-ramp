@@ -61,6 +61,7 @@ public:
     virtual void send_midi_start_stop(bool start);
     virtual void send_midi_start_stop(bool start, uint32_t frame);
     virtual void send_midi_note(uint32_t frame);
+    virtual void send_midi_note_off(uint32_t frame);
     virtual uint32_t get_mode();
     virtual float get_enter_threshold();
     virtual float get_leave_threshold();
@@ -160,6 +161,9 @@ public:
 	int      host_div;
     float    beats;
     int64_t  bar;
+    
+    bool note_pressed;
+    uint8_t active_note;
     
     uint32_t restart_countdown;
     bool waiting_restart_on_bar;

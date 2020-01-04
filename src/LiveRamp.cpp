@@ -43,8 +43,7 @@ float LiveRamp::get_leave_threshold(){
 }
 
 uint8_t LiveRamp::get_midi_note(){
-    uint8_t note = int(*midi_note);
-    printf("note: %i\n", note);
+    uint8_t note = uint8_t(*midi_note);
     return note;
 }
 
@@ -78,17 +77,63 @@ void LiveRamp::send_midi_note(uint32_t frame)
     midiatom.type = uris.midi_MidiEvent;
     midiatom.size = 3;
     
+    uint8_t msg_off[3];
+    msg_off[0] = 0x80;
+    msg_off[1] = active_note; /*get ex midi note */
+    msg_off[2] = 100;
+    
+    active_note = get_midi_note();
+    
     uint8_t msg[3];
     msg[0] = 0x90;
-    msg[1] = get_midi_note();
+    msg[1] = active_note;
     msg[2] = 100;
+    
+    uint32_t frame_off;
+    if (frame == 0){
+        frame_off = 0;
+        frame = 1;
+    } else {
+        frame_off = frame -1;
+    }
+    
+    if (note_pressed){
+        if (0 == lv2_atom_forge_frame_time (&forge, frame_off)) return;
+        if (0 == lv2_atom_forge_raw (&forge, &midiatom, sizeof (LV2_Atom))) return;
+        if (0 == lv2_atom_forge_raw (&forge, msg_off, 3)) return;
+        lv2_atom_forge_pad (&forge, sizeof (LV2_Atom) + 3);
+    }
     
     if (0 == lv2_atom_forge_frame_time (&forge, frame)) return;
 	if (0 == lv2_atom_forge_raw (&forge, &midiatom, sizeof (LV2_Atom))) return;
 	if (0 == lv2_atom_forge_raw (&forge, msg, 3)) return;
     lv2_atom_forge_pad (&forge, sizeof (LV2_Atom) + 3);
+    
+    note_pressed = true;
 }
 
+void LiveRamp::send_midi_note_off(uint32_t frame){
+    if (! note_pressed){
+        return;
+    }
+    
+    LV2_Atom midiatom;
+    midiatom.type = uris.midi_MidiEvent;
+    midiatom.size = 3;
+    
+    uint8_t msg_off[3];
+    msg_off[0] = 0x80;
+    msg_off[1] = active_note;
+    msg_off[2] = 100;
+    
+    if (0 == lv2_atom_forge_frame_time (&forge, frame)) return;
+	if (0 == lv2_atom_forge_raw (&forge, &midiatom, sizeof (LV2_Atom))) return;
+	if (0 == lv2_atom_forge_raw (&forge, msg_off, 3)) return;
+    lv2_atom_forge_pad (&forge, sizeof (LV2_Atom) + 3);
+    
+    note_pressed = false;
+}
+    
 void LiveRamp::connect_port(LV2_Handle instance, uint32_t port, void *data)
 {
     LiveRamp *plugin;
