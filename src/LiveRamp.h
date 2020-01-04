@@ -12,7 +12,10 @@ public:
     uint32_t get_mode();
     float get_enter_threshold();
     float get_leave_threshold();
+    uint8_t get_midi_note();
     void send_midi_start_stop(bool start, uint32_t frame);
+    void send_midi_note(uint32_t frame);
     float *sync_bpm;
     float *tempo;
+    float *midi_note;
 };

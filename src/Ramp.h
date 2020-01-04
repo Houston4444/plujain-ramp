@@ -60,9 +60,11 @@ public:
     float get_fall_period_factor();
     virtual void send_midi_start_stop(bool start);
     virtual void send_midi_start_stop(bool start, uint32_t frame);
+    virtual void send_midi_note(uint32_t frame);
     virtual uint32_t get_mode();
     virtual float get_enter_threshold();
     virtual float get_leave_threshold();
+    virtual uint8_t get_midi_note();
     float get_shut_octave_factor();
     float get_octave_image_value(float speed, bool leaving);
     float get_effect_up_octave_value();

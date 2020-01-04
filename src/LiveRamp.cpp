@@ -42,6 +42,12 @@ float LiveRamp::get_leave_threshold(){
     return tmp_lt;
 }
 
+uint8_t LiveRamp::get_midi_note(){
+    uint8_t note = int(*midi_note);
+    printf("note: %i\n", note);
+    return note;
+}
+
 void LiveRamp::send_midi_start_stop(bool start, uint32_t frame)
 {
     LV2_Atom midiatom;
@@ -66,6 +72,23 @@ void LiveRamp::send_midi_start_stop(bool start, uint32_t frame)
     }
 }
 
+void LiveRamp::send_midi_note(uint32_t frame)
+{
+    LV2_Atom midiatom;
+    midiatom.type = uris.midi_MidiEvent;
+    midiatom.size = 3;
+    
+    uint8_t msg[3];
+    msg[0] = 0x90;
+    msg[1] = get_midi_note();
+    msg[2] = 100;
+    
+    if (0 == lv2_atom_forge_frame_time (&forge, frame)) return;
+	if (0 == lv2_atom_forge_raw (&forge, &midiatom, sizeof (LV2_Atom))) return;
+	if (0 == lv2_atom_forge_raw (&forge, msg, 3)) return;
+    lv2_atom_forge_pad (&forge, sizeof (LV2_Atom) + 3);
+}
+
 void LiveRamp::connect_port(LV2_Handle instance, uint32_t port, void *data)
 {
     LiveRamp *plugin;
@@ -74,7 +97,8 @@ void LiveRamp::connect_port(LV2_Handle instance, uint32_t port, void *data)
     enum {IN, MIDI_IN, OUT, MIDI_OUT,
       ACTIVE, MODE, ENTER_THRESHOLD, LEAVE_THRESHOLD, PRE_START, PRE_START_UNITS, BEAT_OFFSET,
       SYNC_BPM, HOST_TEMPO, TEMPO, DIVISION, MAX_DURATION, HALF_SPEED, DOUBLE_SPEED,
-      ATTACK, SHAPE, DEPTH, VOLUME, SPEED_EFFECT_1, SPEED_EFFECT_1_VOL, SPEED_EFFECT_2, SPEED_EFFECT_2_VOL, PLUGIN_PORT_COUNT};
+      ATTACK, SHAPE, DEPTH, VOLUME, SPEED_EFFECT_1, SPEED_EFFECT_1_VOL, SPEED_EFFECT_2, SPEED_EFFECT_2_VOL,
+      MIDI_NOTE, PLUGIN_PORT_COUNT};
 
     switch (port)
     {
@@ -155,6 +179,9 @@ void LiveRamp::connect_port(LV2_Handle instance, uint32_t port, void *data)
             break;
         case SPEED_EFFECT_2_VOL:
             plugin->speed_effect_2_vol = (float*) data;
+            break;
+        case MIDI_NOTE:
+            plugin->midi_note = (float*) data;
             break;
     }
 }

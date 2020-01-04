@@ -165,6 +165,10 @@ float Ramp::get_leave_threshold(){
     return 0.0f;
 }
 
+uint8_t Ramp::get_midi_note(){
+    return 0x00;
+}
+
 LV2_Handle Ramp::instantiate(const LV2_Descriptor* descriptor, double samplerate, const char* bundle_path, 
                   const LV2_Feature* const* features)
 {
@@ -651,6 +655,10 @@ void Ramp::send_midi_start_stop(bool start)
     send_midi_start_stop(start, 0);
 }
 
+void Ramp::send_midi_note(uint32_t frame)
+{
+    return;
+}
 
 /**********************************************************************************************************************************************************/
 
@@ -991,6 +999,7 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
                     break;
             }
             
+            plugin->send_midi_note(i);
             plugin->start_period();
             
             if (active_state
