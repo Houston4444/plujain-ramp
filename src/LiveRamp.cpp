@@ -1,4 +1,6 @@
 #include "LiveRamp.h"
+#define MAP(v, inmin, inmax, outmin, outmax) ((outmin + ((v - inmin)/(inmax - inmin)) * (outmax - outmin)))
+#define RAIL(v, min, max) (MIN((max), MAX((min), (v))))
 
 enum {BYPASS, FIRST_WAITING_PERIOD, WAITING_SIGNAL, FIRST_PERIOD, EFFECT, OUTING};
 enum {MODE_ACTIVE, MODE_THRESHOLD, MODE_HOST_TRANSPORT, MODE_MIDI, MODE_MIDI_BYPASS};
@@ -80,14 +82,47 @@ void LiveRamp::send_midi_note(uint32_t frame)
     uint8_t msg_off[3];
     msg_off[0] = 0x80;
     msg_off[1] = active_note; /*get ex midi note */
-    msg_off[2] = 100;
+    msg_off[2] = last_velocity;
     
     active_note = get_midi_note();
+//     uint8_t velocity = peak_in_threshold * 127.0;
+    uint8_t velocity_base;
+    uint8_t velocity;
+    
+    float v_min = powf(10.0f, *midi_velocity_min / 20.0f);
+    float v_max = powf(10.0f, *midi_velocity_max / 20.0f);
+    
+    if (peak_in_threshold <= v_min){
+        velocity_base = 0;
+    } else if (peak_in_threshold >= v_max){
+        velocity_base = 127;
+    } else {
+        velocity_base = MAP(peak_in_threshold, v_min, v_max, 0.0f, 1.0f) * 127;
+    }
+    if (velocity_base < last_velocity) {
+        velocity = velocity_base * (1- *midi_inertia) + last_velocity * *midi_inertia;
+    } else {
+        velocity = velocity_base;
+    }
+    
+    velocity = RAIL(velocity, 0, 127);
+    
+    if (velocity == last_velocity){
+        if (velocity_base > last_velocity){
+            velocity += 1;
+        } else if (velocity_base < last_velocity){
+            velocity -= 1;
+        }
+    }
+    
+    last_velocity = velocity;
+    
+    printf("Velo %.2f ; %i\n", peak_in_threshold, velocity);
     
     uint8_t msg[3];
     msg[0] = 0x90;
     msg[1] = active_note;
-    msg[2] = 100;
+    msg[2] = velocity;
     
     uint32_t frame_off;
     if (frame == 0){
@@ -143,7 +178,7 @@ void LiveRamp::connect_port(LV2_Handle instance, uint32_t port, void *data)
       ACTIVE, MODE, ENTER_THRESHOLD, LEAVE_THRESHOLD, PRE_START, PRE_START_UNITS, BEAT_OFFSET,
       SYNC_BPM, HOST_TEMPO, TEMPO, DIVISION, MAX_DURATION, HALF_SPEED, DOUBLE_SPEED,
       ATTACK, SHAPE, DEPTH, VOLUME, SPEED_EFFECT_1, SPEED_EFFECT_1_VOL, SPEED_EFFECT_2, SPEED_EFFECT_2_VOL,
-      MIDI_NOTE, PLUGIN_PORT_COUNT};
+      MIDI_NOTE, MIDI_VELOCITY_MIN, MIDI_VELOCITY_MAX, MIDI_INERTIA, PLUGIN_PORT_COUNT};
 
     switch (port)
     {
@@ -227,6 +262,15 @@ void LiveRamp::connect_port(LV2_Handle instance, uint32_t port, void *data)
             break;
         case MIDI_NOTE:
             plugin->midi_note = (float*) data;
+            break;
+        case MIDI_VELOCITY_MIN:
+            plugin->midi_velocity_min = (float*) data;
+            break;
+        case MIDI_VELOCITY_MAX:
+            plugin->midi_velocity_max = (float*) data;
+            break;
+        case MIDI_INERTIA:
+            plugin->midi_inertia = (float*) data;
             break;
     }
 }

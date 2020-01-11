@@ -19,4 +19,7 @@ public:
     float *sync_bpm;
     float *tempo;
     float *midi_note;
+    float *midi_velocity_min;
+    float *midi_velocity_max;
+    float *midi_inertia;
 };

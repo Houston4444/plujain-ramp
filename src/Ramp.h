@@ -129,6 +129,8 @@ public:
     bool waiting_enter_threshold;
     bool leave_threshold_exceeded;
     bool stop_request;
+    float peak_in_threshold;
+    uint8_t last_velocity;
     
     float current_shape;
     float current_depth;

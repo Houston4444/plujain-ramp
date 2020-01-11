@@ -10,7 +10,7 @@
 
 #include "Ramp.h"
 
-
+#define MAX(a,b) ( (a) > (b) ? (a) : (b) )
 
 enum {BYPASS, FIRST_WAITING_PERIOD, WAITING_SIGNAL, FIRST_PERIOD, EFFECT, OUTING};
 enum {MODE_ACTIVE, MODE_THRESHOLD, MODE_HOST_TRANSPORT, MODE_MIDI, MODE_MIDI_BYPASS};
@@ -185,6 +185,8 @@ LV2_Handle Ramp::instantiate(const LV2_Descriptor* descriptor, double samplerate
 			plugin->log = (LV2_Log_Log*)features[i]->data;
 		}
 	}
+	
+	plugin->last_velocity = 100;
 	
 	lv2_log_logger_init (&plugin->logger, plugin->map, plugin->log);
     
@@ -809,7 +811,7 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
         }
         
         if (start_sample > 0){
-            /* if there is an start_sample found, prefer node (0.0f) before in the buffer limit */
+            /* if there is a start_sample found, prefer node (0.0f) before in the buffer limit */
             for ( int j = start_sample-1; j >= 0; j--)
             {
                 float value;
@@ -1046,13 +1048,20 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
             plugin->waiting_enter_threshold = not bool(plugin->leave_threshold_exceeded);
             plugin->leave_threshold_exceeded = false;
         }
-
-        if (plugin->period_count > (plugin->period_length - plugin->threshold_time)
-            and ! plugin->waiting_enter_threshold
-            and ! plugin->leave_threshold_exceeded
-            and plugin->current_mode == MODE_THRESHOLD
-            and abs(plugin->in[i] >= leave_threshold)){
+        
+        if (plugin->period_count == (plugin->period_length - plugin->threshold_time)){
+            plugin->peak_in_threshold = 0.0f;
+        }
+        
+        if (plugin->period_count > (plugin->period_length - plugin->threshold_time)){
+            plugin->peak_in_threshold = MAX(plugin->peak_in_threshold, abs(plugin->in[i]));
+            
+            if (! plugin->waiting_enter_threshold
+                    and ! plugin->leave_threshold_exceeded
+                    and plugin->current_mode == MODE_THRESHOLD
+                    and abs(plugin->in[i] >= leave_threshold)){
                 plugin->leave_threshold_exceeded = true;
+            }
         }
     }
     
