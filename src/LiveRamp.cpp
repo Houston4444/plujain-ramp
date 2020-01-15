@@ -311,7 +311,11 @@ float LiveRamp::get_tempo()
 {
     float tempo_now;
     if (*sync_bpm > 0.5){
-        tempo_now = *host_tempo;
+        if (host_info){
+            tempo_now = host_bpm;
+        } else {
+            tempo_now = *host_tempo;
+        }
     } else {
         tempo_now = *tempo;
     }

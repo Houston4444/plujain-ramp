@@ -67,12 +67,15 @@ update_position (Ramp* plugin, const LV2_Atom_Object* obj)
 		float    _bpb   = ((LV2_Atom_Float*)bpb)->body;
 		int64_t  _bar   = ((LV2_Atom_Long*)bar)->body;
 		float    _beat  = ((LV2_Atom_Float*)beat)->body;
-
+        
+        float host_bpm = ((LV2_Atom_Float*)bpm)->body;
+        
 		plugin->host_div   = ((LV2_Atom_Int*)bunit)->body;
-		plugin->host_bpm   = ((LV2_Atom_Float*)bpm)->body;
 		plugin->host_speed = ((LV2_Atom_Float*)speed)->body;
-
-		plugin->bar_beats  = _bar * _bpb + _beat; // * host_div / 4.0 // TODO map host metrum
+        
+        plugin->host_bpm   = ((LV2_Atom_Float*)bpm)->body;
+        
+		plugin->bar_beats  = _bar * _bpb + _beat; // * host_div / 4.0 
 		plugin->host_info  = true;
         plugin->beats = _beat;
         plugin->bar = _bar;
@@ -84,6 +87,12 @@ update_position (Ramp* plugin, const LV2_Atom_Object* obj)
                                         * ((plugin->samplerate * 60) / plugin->host_bpm)
                                         * (plugin->host_div /4.0);
         }
+
+//                 if (plugin->host_speed and host_bpm != plugin->host_bpm){
+//         if (plugin->host_speed){
+//             plugin->set_period_length_hot(frame);
+//         }
+        
 	}
 }
 
@@ -187,7 +196,8 @@ LV2_Handle Ramp::instantiate(const LV2_Descriptor* descriptor, double samplerate
 	}
 	
 	plugin->last_velocity = 100;
-	
+	plugin->bar_beats = 0.00;
+    
 	lv2_log_logger_init (&plugin->logger, plugin->map, plugin->log);
     
     if (!plugin->map) {
@@ -396,7 +406,7 @@ float Ramp::get_division()
     return 0.25;
 }
 
-int Ramp::get_period_length()
+int Ramp::get_period_length(bool hot=false)
 {
     if (running_step == FIRST_PERIOD or running_step == EFFECT){
         ;
@@ -435,8 +445,40 @@ int Ramp::get_period_length()
                              * int((float(60.0f / tempo_now) * samplerate) / RAIL(ROUND(*pre_start_units), 1, 8));
     } else {
         tmp_period_length = int((float(60.0f / tempo_now) * float(samplerate)) * tmp_division);
-    
-        if (ternary){
+        
+        if (hot and host_speed and period_count > 0){
+            /* only in case of host playing and tempo modified */
+            /* calculate the frames we need to go to the next period with the new tempo */
+            
+                
+            float bb_pre_start = float(pre_start_n) / float(RAIL(ROUND(*pre_start_units), 1, 8)) ;
+            float bb_offset = 0.125 * RAIL(*beat_offset, -1, 1); /* 0.125 for beat/8 */
+            
+            if (ternary){
+                if (fmod(bar_beats - bb_pre_start, 1) < float(tmp_division * 4/3)){
+                    tmp_division *= 4/float(3);
+                } else {
+                    tmp_division *= 2/float(3);
+                }
+            }
+            
+            double bb_period_rest = tmp_division - fmod(bar_beats + tmp_division, tmp_division) + bb_pre_start + bb_offset;
+            
+            while (bb_period_rest < 0){
+                bb_period_rest += tmp_division;
+            }
+            
+            while (bb_period_rest > tmp_division){
+                bb_period_rest -= tmp_division;
+            }
+            
+            printf("mokze %f %f %f \n", float(bar_beats), float(bb_pre_start), float(bb_period_rest));
+//             printf("goar %f %f \n", float(bb_period_resta), float(bb_period_rest));
+//             double bb_period_rest = double(bar_beats + tmp_division)
+//                                     - (bar_beats + double(tmp_division)) % double(tmp_division));
+            tmp_period_length = int((float(60.0f / host_bpm) * float(samplerate)) * bb_period_rest) + period_count;
+            
+        } else if (ternary){
             if (n_period == 1){
                 tmp_period_length = tmp_period_length - taken_by_groove;
             } else {
@@ -446,9 +488,11 @@ int Ramp::get_period_length()
         }
     }
     
-    current_offset = (float(60.0f/tempo_now) * samplerate * 0.125)
-                     * RAIL(*beat_offset, -1, 1); /* 0.125 for beat/8 */
-    tmp_period_length += current_offset - taken_beat_offset;
+    if (not hot){
+        current_offset = (float(60.0f/tempo_now) * samplerate * 0.125)
+                        * RAIL(*beat_offset, -1, 1); /* 0.125 for beat/8 */
+        tmp_period_length += current_offset - taken_beat_offset;
+    }
     
     if (tmp_period_length < threshold_time){
         tmp_period_length = threshold_time;
@@ -484,7 +528,13 @@ void Ramp::start_period()
     
     period_cut = period_count;
     period_count = 0;
+    period_hot_modified = false;
     taken_beat_offset = current_offset;
+    
+    period_hot_node_count = 0;
+    period_hot_node_ratio = 0.0f;
+    period_fall_ratio = 0.0f;
+    period_global_hot_node_ratio = 0.0f;
     
     if (n_period == 0){
         n_period = 1;
@@ -541,6 +591,54 @@ void Ramp::start_first_period(uint32_t frame)
     waiting_enter_threshold = false;
 }
 
+
+void Ramp::set_period_length_hot()
+{
+//     if (not (current_mode == EFFECT or current_mode == FIRST_PERIOD)){
+//         return;
+//     }
+    
+    period_hot_modified = true;
+    
+    
+    uint32_t tmp_period_length = get_period_length(true);
+    printf("fkzoof %i\n", tmp_period_length);
+    
+    if (period_count <= period_peak){
+        if (current_mode == FIRST_PERIOD){
+            return;
+        }
+        
+        if (period_count + default_fade >= tmp_period_length){
+            return;
+        }
+        
+        if (period_peak + default_fade > tmp_period_length){
+            printf("rfoke %f %i\n", period_hot_node_ratio, period_hot_node_count);
+            period_peak = tmp_period_length - default_fade;
+            
+        }
+        
+        period_hot_node_ratio += float((1.0f - period_hot_node_ratio)
+                                       * (float(period_count - period_hot_node_count)
+                                          / float(period_peak - period_hot_node_count)));
+        
+    } else {
+        if (period_count + default_fade * (1 - period_fall_ratio) > tmp_period_length){
+            return;
+        }
+        period_hot_node_ratio = float(period_fall_ratio);
+        
+    }
+    
+    period_global_hot_node_ratio = float(period_count / period_length);
+    period_hot_node_count = period_count;
+    printf("rflke %f %i %f %i %i\n", period_hot_node_ratio, period_hot_node_count, float(bar_beats), period_length, tmp_period_length);
+    
+    period_length = tmp_period_length;
+    set_period_death();
+}
+
 float Ramp::get_fall_period_factor()
 {
     if (period_count > period_death){
@@ -548,8 +646,21 @@ float Ramp::get_fall_period_factor()
     }
     float period_factor = 1.0f;
     int n_max = (period_death - period_peak) / default_fade;             
-    float pre_factor = 1.00f - float(period_count - period_peak) 
-                       / (float(period_death - period_peak));
+//     float pre_factor = 1.00f - float(period_count - period_peak) 
+//                        / (float(period_death - period_peak));
+    if (period_death == period_hot_node_count){
+        period_fall_ratio = float(period_count - period_peak) 
+                            / (float(period_death - period_peak));
+    } else {
+        period_fall_ratio = float(period_hot_node_ratio)
+                            + (1.0f - float(period_hot_node_ratio))
+                              * (float(period_count - period_hot_node_count)
+                                / (float(period_death - period_hot_node_count)) );
+    }
+    
+    float pre_factor = 1.0f - float(period_fall_ratio);
+    
+//     float pre_factor = 1.00f - float(period_count - period_hot_change_count) / (float(period_death - period_hot_change_count))
     float shape = current_shape;
     
     if (n_max < 1){
@@ -687,6 +798,7 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
         lv2_atom_forge_sequence_head (&plugin->forge, &plugin->frame, 0);
     }
         
+    int hot_change_sample = -1;
     
     /* process control events (for host transport) */
     LV2_Atom_Event* ev = lv2_atom_sequence_begin (&(plugin->midi_in)->body);
@@ -695,6 +807,9 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
             const LV2_Atom_Object* obj = (LV2_Atom_Object*)&ev->body;
             if (obj->body.otype == plugin->uris.time_Position) {
                 update_position(plugin, obj);
+                if (plugin->host_speed){
+                    hot_change_sample = ev->time.frames;
+                }
             }
         }
         ev = lv2_atom_sequence_next (ev);
@@ -845,7 +960,13 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
         float speed_effect_2_value = 0;
         
         if (start_sample == int(i)){
+            plugin->bar_beats = 1.00;
             plugin->set_running_step(FIRST_PERIOD, i);
+        }
+        
+        if (hot_change_sample == int(i)){
+            printf("zkeogffff %i\n", i);
+            plugin->set_period_length_hot();
         }
         
         switch(plugin->running_step)
@@ -961,7 +1082,12 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
                 }
                 
                 if (plugin->period_count < plugin->period_peak){
-                    period_factor = float(plugin->period_count)/float(plugin->period_peak);
+//                     period_factor = float(plugin->period_count)/float(plugin->period_peak);
+                    period_factor = float(plugin->period_hot_node_ratio)
+                                    + float(1 - plugin->period_hot_node_ratio)
+                                        * (float(plugin->period_count - plugin->period_hot_node_count)
+                                           / float(plugin->period_peak - plugin->period_hot_node_count)); 
+                    
                     v = plugin->ex_volume
                         + period_factor * (plugin->current_volume - plugin->ex_volume);
                          
@@ -969,6 +1095,9 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
                     if (plugin->period_count == plugin->period_peak){
                         plugin->current_shape = float(RAIL(*plugin->shape, -4, 4));
                         plugin->current_depth = float(RAIL(*plugin->depth, 0, 1));
+                        
+                        plugin->period_hot_node_ratio = 0.0f;
+                        plugin->period_hot_node_count = plugin->period_peak;
                         
                         int tmp_period_length = plugin->get_period_length();
                         if (tmp_period_length >= (plugin->period_peak + plugin->default_fade)){
@@ -1012,13 +1141,15 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
         
         
         
-        plugin->out[i] = plugin->in[i] * plugin->last_global_factor
-                        + speed_effect_1_value * plugin->current_speed_effect_1_vol
-                        + speed_effect_2_value * plugin->current_speed_effect_2_vol;
+//         plugin->out[i] = plugin->in[i] * plugin->last_global_factor
+//                         + speed_effect_1_value * plugin->current_speed_effect_1_vol
+//                         + speed_effect_2_value * plugin->current_speed_effect_2_vol;
         
+        plugin->out[i] = (plugin->last_global_factor * 2) -1;
+                        
         plugin->period_count++;
         
-        if (plugin->period_count == plugin->period_length){
+        if (plugin->period_count >= plugin->period_length){
             switch(plugin->running_step){
                 case FIRST_WAITING_PERIOD:
                     plugin->set_running_step(WAITING_SIGNAL);
@@ -1039,6 +1170,7 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
                 /* send start if plugin just loaded because slave instances
                     * may have not been ready for a previous start */
                     plugin->send_midi_start_stop(true, i);
+                    
             }
             
             if (plugin->stop_request){

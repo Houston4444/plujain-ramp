@@ -53,10 +53,11 @@ public:
     void set_running_step(uint32_t step, uint32_t frame);
     virtual float get_tempo();
     float get_division();
-    int get_period_length();
+    int get_period_length(bool hot);
     void set_period_death();
     void start_period();
     void start_first_period(uint32_t frame);
+    void set_period_length_hot();
     float get_fall_period_factor();
     virtual void send_midi_start_stop(bool start);
     virtual void send_midi_start_stop(bool start, uint32_t frame);
@@ -120,6 +121,15 @@ public:
     int period_cut;
     int period_audio_start;
     int period_last_reset;
+    float period_fall_ratio;
+    float period_hot_change_fall_ratio;
+    float period_global_hot_node_ratio;
+    float hot_modif_ratio;
+    int period_hot_change_count;
+    bool period_hot_modified;
+    
+    int period_hot_node_count;
+    float period_hot_node_ratio;
     
     uint32_t running_step;
     uint32_t current_mode;
@@ -163,6 +173,9 @@ public:
 	int      host_div;
     float    beats;
     int64_t  bar;
+    
+    double bar_beats_period_start;
+    double bar_beats_frame;
     
     bool note_pressed;
     uint8_t active_note;
