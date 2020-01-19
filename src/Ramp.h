@@ -54,10 +54,12 @@ public:
     virtual float get_tempo();
     float get_division();
     int get_period_length(bool hot);
+    void set_period_length(bool hot);
     void set_period_death();
     void start_period();
     void start_first_period(uint32_t frame);
     void set_period_length_hot();
+    void set_period_properties(bool hot);
     float get_fall_period_factor();
     virtual void send_midi_start_stop(bool start);
     virtual void send_midi_start_stop(bool start, uint32_t frame);
@@ -127,6 +129,7 @@ public:
     float hot_modif_ratio;
     int period_hot_change_count;
     bool period_hot_modified;
+    uint32_t block_id;
     
     int period_hot_node_count;
     float period_hot_node_ratio;
@@ -145,6 +148,8 @@ public:
     float current_shape;
     float current_depth;
     float current_volume;
+    float current_division;
+    float current_tempo;
     float ex_volume;
     float ex_depth;
     float last_global_factor;
@@ -176,6 +181,8 @@ public:
     
     double bar_beats_period_start;
     double bar_beats_frame;
+    double bar_beats_target;
+    double bar_beats_hot_node;
     
     bool note_pressed;
     uint8_t active_note;
