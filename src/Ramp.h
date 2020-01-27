@@ -58,6 +58,7 @@ public:
     void set_period_death();
     void start_period();
     void start_first_period(uint32_t frame);
+    void set_shape();
     void set_period_length_hot();
     void set_period_properties(bool hot);
     float get_fall_period_factor();
@@ -148,7 +149,16 @@ public:
     float current_shape;
     float current_depth;
     float current_volume;
+    
+    uint8_t current_pre_start;
+    float current_pre_start_units;
+    float current_beat_offset;
     float current_division;
+    float current_max_duration;
+    bool is_half_speed;
+    bool is_double_speed;
+    float current_attack;
+    
     float current_tempo;
     float ex_volume;
     float ex_depth;
