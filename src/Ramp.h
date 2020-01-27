@@ -185,7 +185,7 @@ public:
 	float    host_bpm;
 	double   bar_beats;
 	float    host_speed;
-	int      host_div;
+	double   host_div;
     float    beats;
     int64_t  bar;
     
@@ -193,6 +193,7 @@ public:
     double bar_beats_frame;
     double bar_beats_target;
     double bar_beats_hot_node;
+    int beat_start_ref;
     
     bool note_pressed;
     uint8_t active_note;
