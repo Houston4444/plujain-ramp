@@ -6,6 +6,7 @@
 #include <map>
 #include <iostream>
 #include <vector>
+#include <float.h>
 
 
 #include "Ramp.h"
@@ -87,6 +88,8 @@ update_position (Ramp* plugin, const LV2_Atom_Object* obj)
             plugin->beat_start_ref = _bpb * (_bar +1) * (4.0 / plugin->host_div);
         }
 	}
+	
+	printf("trasp hspd: %.2f beats %.2f tmpo %.2f\n", plugin->host_speed, plugin->bar_beats, plugin->host_bpm);
 }
 
 
@@ -467,17 +470,23 @@ void Ramp::set_period_properties(bool hot=false)
             bar_beats_hot_node += (period_count - period_hot_node_count)
                                         / double((float(60.0f / current_tempo) * samplerate));
         } else {
-            if (period_length - period_count < 64
-                and bar_beats >= bar_beats_target
-                and bar_beats - bar_beats_target <= double( (64/double(48000)) * (60/double(current_tempo)) * samplerate)){
-                    /* ignore hot message which wants to start a new period right now
-                     * when the current period is very closed to be finished */
-                    current_tempo = host_bpm;
-                    return;
+            if (current_mode == MODE_HOST_TRANSPORT and host_info){
+                if (period_length - period_count < 64
+                    and bar_beats >= bar_beats_target
+                    and bar_beats - bar_beats_target <= double( (64/double(48000)) * (60/double(current_tempo)) * samplerate)){
+                        /* ignore hot message which wants to start a new period right now
+                        * when the current period is very closed to be finished */
+                        current_tempo = host_bpm;
+                        return;
+                }
+                
+                current_tempo = host_bpm;
+                bar_beats_hot_node = bar_beats;
+            } else {
+                bar_beats_hot_node += (period_count - period_hot_node_count)
+                                        / double((float(60.0f / current_tempo) * samplerate));
+                current_tempo = get_tempo();
             }
-            
-            current_tempo = host_bpm;
-            bar_beats_hot_node = bar_beats;
         }
         
         if (ternary){
@@ -549,8 +558,6 @@ void Ramp::set_period_properties(bool hot=false)
     
     int tmp_period_peak = (current_attack * float(samplerate)) / 1000;
     tmp_period_peak = MIN(tmp_period_peak, tmp_period_death - default_fade);
-    
-    float pre_hot_node = float(period_hot_node_ratio);
     
     if (period_count == 0){
         period_hot_node_ratio = 0.0f;
@@ -644,11 +651,8 @@ void Ramp::start_period()
     
     period_cut = period_count;
     period_count = 0;
-    period_hot_modified = false;
     taken_beat_offset = current_offset;
     
-    period_fall_ratio = 0.0f;
-    period_global_hot_node_ratio = 0.0f;
     bar_beats_hot_node = bar_beats_target;
     
     if (n_period == 0){
@@ -853,14 +857,21 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
     Ramp *plugin;
     plugin = (Ramp *) instance;
     plugin->block_id +=1;
+    
+    int hot_change_sample = -1;
+    
     if (plugin->is_live_ramp){
         /* set midi_out for midi messages */
         const uint32_t capacity = plugin->midi_out->atom.size;
         lv2_atom_forge_set_buffer (&plugin->forge, (uint8_t*)plugin->midi_out, capacity);
         lv2_atom_forge_sequence_head (&plugin->forge, &plugin->frame, 0);
-    }
         
-    int hot_change_sample = -1;
+        if (plugin->current_mode != MODE_HOST_TRANSPORT){
+            if (fabs(plugin->get_tempo() - plugin->current_tempo) > FLT_EPSILON){
+                hot_change_sample = 0;
+            }
+        }
+    }
     
     /* process control events (for host transport) */
     LV2_Atom_Event* ev = lv2_atom_sequence_begin (&(plugin->midi_in)->body);
@@ -868,9 +879,11 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
         if (ev->body.type == plugin->uris.atom_Blank || ev->body.type == plugin->uris.atom_Object) {
             const LV2_Atom_Object* obj = (LV2_Atom_Object*)&ev->body;
             if (obj->body.otype == plugin->uris.time_Position) {
-                update_position(plugin, obj);
-                if (plugin->host_speed){
-                    hot_change_sample = ev->time.frames;
+                if (plugin->current_mode == MODE_HOST_TRANSPORT){
+                    update_position(plugin, obj);
+                    if (plugin->host_speed){
+                        hot_change_sample = ev->time.frames;
+                    }
                 }
             }
         }
@@ -1178,11 +1191,11 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
         
         
         
-//         plugin->out[i] = plugin->in[i] * plugin->last_global_factor
-//                         + speed_effect_1_value * plugin->current_speed_effect_1_vol
-//                         + speed_effect_2_value * plugin->current_speed_effect_2_vol;
+        plugin->out[i] = plugin->in[i] * plugin->last_global_factor
+                        + speed_effect_1_value * plugin->current_speed_effect_1_vol
+                        + speed_effect_2_value * plugin->current_speed_effect_2_vol;
         
-        plugin->out[i] = (plugin->last_global_factor * 2) -1;
+//         plugin->out[i] = (plugin->last_global_factor * 2) -1;
                         
         plugin->period_count++;
         
