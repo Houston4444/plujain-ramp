@@ -177,7 +177,7 @@ void LiveRamp::connect_port(LV2_Handle instance, uint32_t port, void *data)
     enum {IN, MIDI_IN, OUT, MIDI_OUT,
       ACTIVE, MODE, ENTER_THRESHOLD, LEAVE_THRESHOLD, PRE_START, PRE_START_UNITS, BEAT_OFFSET,
       SYNC_BPM, HOST_TEMPO, TEMPO, DIVISION, MAX_DURATION, HALF_SPEED, DOUBLE_SPEED,
-      ATTACK, SHAPE, DEPTH, VOLUME, SPEED_EFFECT_1, SPEED_EFFECT_1_VOL, SPEED_EFFECT_2, SPEED_EFFECT_2_VOL,
+      ATTACK, SHAPE, RANDOM_SHAPE, DEPTH, VOLUME, SPEED_EFFECT_1, SPEED_EFFECT_1_VOL, SPEED_EFFECT_2, SPEED_EFFECT_2_VOL,
       MIDI_NOTE, MIDI_VELOCITY_MIN, MIDI_VELOCITY_MAX, MIDI_INERTIA, PLUGIN_PORT_COUNT};
 
     switch (port)
@@ -241,6 +241,9 @@ void LiveRamp::connect_port(LV2_Handle instance, uint32_t port, void *data)
             break;
         case SHAPE:
             plugin->shape = (float*) data;
+            break;
+        case RANDOM_SHAPE:
+            plugin->random_shape = (float*) data;
             break;
         case DEPTH:
             plugin->depth = (float*) data;

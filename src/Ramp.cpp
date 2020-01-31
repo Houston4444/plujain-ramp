@@ -535,11 +535,35 @@ void Ramp::set_period_properties(bool hot=false)
                 fallback_bb_target = bar_beats_target + base_time * 2/double(3);
             }
         } else {
+//             bar_beats_target = bar_beats_hot_node
+//                                 + current_division
+//                                 - fmod(bar_beats_hot_node, current_division)
+//                                 + bb_pre_start
+//                                 + bb_offset;
+                                
             bar_beats_target = bar_beats_hot_node
                                 + current_division
                                 - fmod(bar_beats_hot_node, current_division)
-                                + bb_pre_start
-                                + bb_offset;
+                                + bb_pre_start;
+//                                 + bb_offset;
+            double inside_beat = fmod(bar_beats_target, 1.0);
+            double outside_beat;
+            
+            float semi_groove = 0.515;
+            
+            if (inside_beat <= 0.50){
+                outside_beat = double(semi_groove * inside_beat / 0.50);
+            } else {
+                outside_beat = semi_groove + double((inside_beat - 0.5) * (1.0 - semi_groove) * 2);
+            }
+            
+//             printf("bb_tg %f inside_beat %f outside_beat %f\n", bar_beats_target, inside_beat, outside_beat);
+            
+            double groove_delay = outside_beat - inside_beat;
+            
+            bar_beats_target -= inside_beat;
+            bar_beats_target += outside_beat;
+            bar_beats_target += bb_offset;
             
             if (current_division > 1.00){
                 bar_beats_target += fmod(beat_start_ref, current_division);
@@ -549,7 +573,7 @@ void Ramp::set_period_properties(bool hot=false)
                 bar_beats_target += current_division;
             }
                 
-            while (bar_beats_target - bar_beats_hot_node > current_division){
+            while (bar_beats_target - bar_beats_hot_node > current_division + groove_delay){
                 bar_beats_target -= current_division;
             }
             
@@ -726,8 +750,10 @@ void Ramp::start_first_period(uint32_t frame)
 
 void Ramp::set_shape()
 {
-    current_shape = float(RAIL(*shape, -4, 4));
-                        
+    current_shape = float(*shape);
+    float randoshape = float(RAIL(*random_shape, 0, 1)) * float((8 * float(rand() / (RAND_MAX + 1.))) - 4.0);
+    current_shape += randoshape;
+    current_shape = float(RAIL(current_shape, -4, 4));
     int n_max = (period_death - period_peak) / default_fade;
     
     if (n_max < 1){

@@ -99,6 +99,7 @@ public:
     float *double_speed;
     float *attack;
     float *shape;
+    float *random_shape;
     float *depth;
     float *volume;
     float *speed_effect_1;
