@@ -175,8 +175,30 @@ lv2:port
     lv2pg:group ramp_live_lv2:G102_RP;
 ],
 [
-    a lv2:InputPort, lv2:ControlPort ;
+    a lv2:ControlPort, lv2:InputPort;
     lv2:index 11;
+    lv2:symbol "random_beat_offset";
+    lv2:name "Random Beat Offset",
+        "Placement aléatoire"@fr ;
+    lv2:default 0;
+    lv2:minimum 0;
+    lv2:maximum 1;
+    lv2pg:group ramp_live_lv2:G102_RP;
+],
+[
+    a lv2:ControlPort, lv2:InputPort;
+    lv2:index 12;
+    lv2:symbol "swing";
+    lv2:name "Swing",
+        "Swing"@fr ;
+    lv2:default 0;
+    lv2:minimum 0;
+    lv2:maximum 1;
+    lv2pg:group ramp_live_lv2:G102_RP;
+],
+[
+    a lv2:InputPort, lv2:ControlPort ;
+    lv2:index 13;
     lv2:symbol "temposync" ;
     lv2:name "Sync Tempo", 
         "Tempo Synchronisé"@fr ;
@@ -190,7 +212,7 @@ lv2:port
 [
     a lv2:InputPort ;
     a lv2:ControlPort ;
-    lv2:index 12;
+    lv2:index 14;
     lv2:symbol "bpm_host" ;
     lv2:name "Host BPM" ;
     lv2:portProperty epp:hasStrictBounds ;
@@ -204,7 +226,7 @@ lv2:port
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 13;
+    lv2:index 15;
     lv2:symbol "tempo";
     lv2:name "Tempo",
         "Tempo"@fr ;
@@ -216,7 +238,7 @@ lv2:port
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 14;
+    lv2:index 16;
     lv2:symbol "division";
     lv2:name "Division",
         "Division"@fr ;
@@ -244,7 +266,7 @@ lv2:port
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 15;
+    lv2:index 17;
     lv2:symbol "max_duration";
     lv2:name "Max Duration",
         "Durée Maximale"@fr ;
@@ -264,7 +286,7 @@ lv2:port
 ],
 [
     a lv2:InputPort, lv2:ControlPort ;
-    lv2:index 16;
+    lv2:index 18;
     lv2:symbol "half_speed" ;
     lv2:name "Half Speed",
         "Demi Vitesse"@fr ;
@@ -277,7 +299,7 @@ lv2:port
 ],
 [
     a lv2:InputPort, lv2:ControlPort ;
-    lv2:index 17;
+    lv2:index 19;
     lv2:symbol "double_speed" ;
     lv2:name "Double Speed",
         "Double Vitesse"@fr ;
@@ -291,7 +313,7 @@ lv2:port
 
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 18;
+    lv2:index 20;
     lv2:symbol "attack";
     lv2:name "Attack",
         "Attaque"@fr ;
@@ -303,7 +325,7 @@ lv2:port
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 19;
+    lv2:index 21;
     lv2:symbol "shape";
     lv2:name "Shape",
         "Forme"@fr ;
@@ -314,7 +336,7 @@ lv2:port
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 20;
+    lv2:index 22;
     lv2:symbol "random_shape";
     lv2:name "Random Shape",
         "Forme aléatoire"@fr ;
@@ -325,7 +347,7 @@ lv2:port
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 21;
+    lv2:index 23;
     lv2:symbol "depth";
     lv2:name "Depth",
         "Profondeur"@fr ;
@@ -336,7 +358,7 @@ lv2:port
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 22;
+    lv2:index 24;
     lv2:symbol "volume";
     lv2:name "Volume",
         "Volume"@fr ;
@@ -349,7 +371,7 @@ lv2:port
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 23;
+    lv2:index 25;
     lv2:symbol "speed_effect_1";
     lv2:name "Speed Effect 1",
         "Effet de Vitesse 1"@fr ;
@@ -375,7 +397,7 @@ lv2:port
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 24;
+    lv2:index 26;
     lv2:symbol "speed_effect_1_vol";
     lv2:name "Speed Effect 1 Volume",
         "Effet de Vitesse 1 Volume"@fr ;
@@ -388,7 +410,7 @@ lv2:port
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 25;
+    lv2:index 27;
     lv2:symbol "speed_effect_2";
     lv2:name "Speed Effect 2",
         "Effet de Vitesse 2"@fr;
@@ -414,7 +436,7 @@ lv2:port
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 26;
+    lv2:index 28;
     lv2:symbol "speed_effect_2_vol";
     lv2:name "Speed Effect 2 Volume",
         "Effet de Vitesse 2 Volume"@fr;
@@ -427,7 +449,7 @@ lv2:port
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 27;
+    lv2:index 29;
     lv2:symbol "midi_note";
     lv2:name "MIDI Note",
         "Note MIDI"@fr;
@@ -439,7 +461,7 @@ lv2:port
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 28;
+    lv2:index 30;
     lv2:symbol "midi_velocity_min";
     lv2:name "MIDI Velocity Minimum",
         "Velocité MIDI Minimum"@fr;
@@ -451,7 +473,7 @@ lv2:port
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 29;
+    lv2:index 31;
     lv2:symbol "midi_velocity_max";
     lv2:name "MIDI Velocity Maximum",
         "Vélocité MIDI Maximum"@fr;
@@ -463,7 +485,7 @@ lv2:port
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 30;
+    lv2:index 32;
     lv2:symbol "midi_inertia";
     lv2:name "MIDI Inertia",
         "Inertie MIDI"@fr;
@@ -471,6 +493,15 @@ lv2:port
     lv2:minimum 0;
     lv2:maximum 0.99;
     lv2pg:group ramp_live_lv2:G106_MIDI;
+],
+[
+    a lv2:CVPort, lv2:OutputPort;
+    lv2:index 33;
+    lv2:default 0;
+    lv2:minimum 0;
+    lv2:maximum 10;
+    lv2:symbol "Out_test";
+    lv2:name "Out_test";
 ].
 
 ramp_live_lv2:G101_AM

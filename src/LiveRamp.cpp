@@ -117,7 +117,7 @@ void LiveRamp::send_midi_note(uint32_t frame)
     
     last_velocity = velocity;
     
-    printf("Velo %.2f ; %i\n", peak_in_threshold, velocity);
+//     printf("Velo %.2f ; %i\n", peak_in_threshold, velocity);
     
     uint8_t msg[3];
     msg[0] = 0x90;
@@ -175,10 +175,12 @@ void LiveRamp::connect_port(LV2_Handle instance, uint32_t port, void *data)
     plugin = (LiveRamp *) instance;
     
     enum {IN, MIDI_IN, OUT, MIDI_OUT,
-      ACTIVE, MODE, ENTER_THRESHOLD, LEAVE_THRESHOLD, PRE_START, PRE_START_UNITS, BEAT_OFFSET,
+      ACTIVE, MODE, ENTER_THRESHOLD, LEAVE_THRESHOLD,
+      PRE_START, PRE_START_UNITS, BEAT_OFFSET, RANDOM_OFFSET, SWING,
       SYNC_BPM, HOST_TEMPO, TEMPO, DIVISION, MAX_DURATION, HALF_SPEED, DOUBLE_SPEED,
-      ATTACK, SHAPE, RANDOM_SHAPE, DEPTH, VOLUME, SPEED_EFFECT_1, SPEED_EFFECT_1_VOL, SPEED_EFFECT_2, SPEED_EFFECT_2_VOL,
-      MIDI_NOTE, MIDI_VELOCITY_MIN, MIDI_VELOCITY_MAX, MIDI_INERTIA, PLUGIN_PORT_COUNT};
+      ATTACK, SHAPE, RANDOM_SHAPE, DEPTH, VOLUME,
+      SPEED_EFFECT_1, SPEED_EFFECT_1_VOL, SPEED_EFFECT_2, SPEED_EFFECT_2_VOL,
+      MIDI_NOTE, MIDI_VELOCITY_MIN, MIDI_VELOCITY_MAX, MIDI_INERTIA, OUT_TEST, PLUGIN_PORT_COUNT};
 
     switch (port)
     {
@@ -214,6 +216,12 @@ void LiveRamp::connect_port(LV2_Handle instance, uint32_t port, void *data)
             break;
         case BEAT_OFFSET:
             plugin->beat_offset = (float*) data;
+            break;
+        case RANDOM_OFFSET:
+            plugin->random_offset = (float*) data;
+            break;
+        case SWING:
+            plugin->swing = (float*) data;
             break;
         case SYNC_BPM:
             plugin->sync_bpm = (float*) data;
@@ -274,6 +282,9 @@ void LiveRamp::connect_port(LV2_Handle instance, uint32_t port, void *data)
             break;
         case MIDI_INERTIA:
             plugin->midi_inertia = (float*) data;
+            break;
+        case OUT_TEST:
+            plugin->out_test = (float*) data;
             break;
     }
 }

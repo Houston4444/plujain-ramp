@@ -90,6 +90,8 @@ public:
     float *pre_start;
     float *pre_start_units;
     float *beat_offset;
+    float *random_offset;
+    float *swing;
 //     float *sync_bpm;
 //     float *tempo;
     float *host_tempo;
@@ -106,7 +108,7 @@ public:
     float *speed_effect_1_vol;
     float *speed_effect_2;
     float *speed_effect_2_vol;
-    
+    float *out_test;
     double samplerate;
     
     float audio_memory[960000];
@@ -131,6 +133,7 @@ public:
     float hot_modif_ratio;
     int period_hot_change_count;
     bool period_hot_modified;
+    double period_random_offset;
     uint32_t block_id;
     
     int period_hot_node_count;
