@@ -38,7 +38,6 @@ void CvLiveRamp::connect_port(LV2_Handle instance, uint32_t port, void *data)
       PRE_START, PRE_START_UNITS, BEAT_OFFSET, RANDOM_OFFSET,
       SYNC_BPM, HOST_TEMPO, TEMPO, DIVISION, MAX_DURATION, HALF_SPEED, DOUBLE_SPEED,
       ATTACK, SHAPE, RANDOM_SHAPE, DEPTH, VOLUME,
-      SPEED_EFFECT_1, SPEED_EFFECT_1_VOL, SPEED_EFFECT_2, SPEED_EFFECT_2_VOL,
       MIDI_NOTE, MIDI_VELOCITY_MIN, MIDI_VELOCITY_MAX, MIDI_INERTIA, PLUGIN_PORT_COUNT};
 
     switch (port)
@@ -114,18 +113,6 @@ void CvLiveRamp::connect_port(LV2_Handle instance, uint32_t port, void *data)
             break;
         case VOLUME:
             plugin->volume = (float*) data;
-            break;
-        case SPEED_EFFECT_1:
-            plugin->speed_effect_1 = (float*) data;
-            break;
-        case SPEED_EFFECT_1_VOL:
-            plugin->speed_effect_1_vol = (float*) data;
-            break;
-        case SPEED_EFFECT_2:
-            plugin->speed_effect_2 = (float*) data;
-            break;
-        case SPEED_EFFECT_2_VOL:
-            plugin->speed_effect_2_vol = (float*) data;
             break;
         case MIDI_NOTE:
             plugin->midi_note = (float*) data;

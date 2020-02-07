@@ -32,8 +32,7 @@ void CvRamp::connect_port(LV2_Handle instance, uint32_t port, void *data)
 
     enum {IN, CTRL_IN, OUT, ACTIVE, PRE_START, PRE_START_UNITS, BEAT_OFFSET, RANDOM_OFFSET,
           HOST_TEMPO, DIVISION, MAX_DURATION, HALF_SPEED, DOUBLE_SPEED,
-          ATTACK, SHAPE, RANDOM_SHAPE, DEPTH, VOLUME,
-          SPEED_EFFECT_1, SPEED_EFFECT_1_VOL, SPEED_EFFECT_2, SPEED_EFFECT_2_VOL, PLUGIN_PORT_COUNT};
+          ATTACK, SHAPE, RANDOM_SHAPE, DEPTH, VOLUME, PLUGIN_PORT_COUNT};
 
     switch (port)
     {
@@ -91,134 +90,8 @@ void CvRamp::connect_port(LV2_Handle instance, uint32_t port, void *data)
         case VOLUME:
             plugin->volume = (float*) data;
             break;
-        case SPEED_EFFECT_1:
-            plugin->speed_effect_1 = (float*) data;
-            break;
-        case SPEED_EFFECT_1_VOL:
-            plugin->speed_effect_1_vol = (float*) data;
-            break;
-        case SPEED_EFFECT_2:
-            plugin->speed_effect_2 = (float*) data;
-            break;
-        case SPEED_EFFECT_2_VOL:
-            plugin->speed_effect_2_vol = (float*) data;
-            break;
     }
 }
-
-// void LiveRamp::connect_port(LV2_Handle instance, uint32_t port, void *data)
-// {
-//     LiveRamp *plugin;
-//     plugin = (LiveRamp *) instance;
-//     
-//     enum {IN, MIDI_IN, OUT, MIDI_OUT,
-//       ACTIVE, MODE, ENTER_THRESHOLD, LEAVE_THRESHOLD,
-//       PRE_START, PRE_START_UNITS, BEAT_OFFSET, RANDOM_OFFSET,
-//       SYNC_BPM, HOST_TEMPO, TEMPO, DIVISION, MAX_DURATION, HALF_SPEED, DOUBLE_SPEED,
-//       ATTACK, SHAPE, RANDOM_SHAPE, DEPTH, VOLUME,
-//       SPEED_EFFECT_1, SPEED_EFFECT_1_VOL, SPEED_EFFECT_2, SPEED_EFFECT_2_VOL,
-//       MIDI_NOTE, MIDI_VELOCITY_MIN, MIDI_VELOCITY_MAX, MIDI_INERTIA, PLUGIN_PORT_COUNT};
-// 
-//     switch (port)
-//     {
-//         case IN:
-//             plugin->in = (float*) data;
-//             break;
-//         case MIDI_IN:
-//             plugin->midi_in = (const LV2_Atom_Sequence*) data;
-//             break;
-//         case OUT:
-//             plugin->out = (float*) data;
-//             break;
-//         case MIDI_OUT:
-//             plugin->midi_out = (LV2_Atom_Sequence*) data;
-//             break;
-//         case ACTIVE:
-//             plugin->active = (float*) data;
-//             break;
-//         case MODE:
-//             plugin->mode = (float*) data;
-//             break;
-//         case ENTER_THRESHOLD:
-//             plugin->enter_threshold = (float*) data;
-//             break;
-//         case LEAVE_THRESHOLD:
-//             plugin->leave_threshold = (float*) data;
-//             break;
-//         case PRE_START:
-//             plugin->pre_start = (float*) data;
-//             break;
-//         case PRE_START_UNITS:
-//             plugin->pre_start_units = (float*) data;
-//             break;
-//         case BEAT_OFFSET:
-//             plugin->beat_offset = (float*) data;
-//             break;
-//         case RANDOM_OFFSET:
-//             plugin->random_offset = (float*) data;
-//             break;
-//         case SYNC_BPM:
-//             plugin->sync_bpm = (float*) data;
-//             break;
-//         case HOST_TEMPO:
-//             plugin->host_tempo = (float*) data;
-//             break;
-//         case TEMPO:
-//             plugin->tempo = (float*) data;
-//             break;
-//         case DIVISION:
-//             plugin->division = (float*) data;
-//             break;
-//         case MAX_DURATION:
-//             plugin->max_duration = (float*) data;
-//             break;
-//         case HALF_SPEED:
-//             plugin->half_speed = (float*) data;
-//             break;
-//         case DOUBLE_SPEED:
-//             plugin->double_speed = (float*) data;
-//             break;
-//         case ATTACK:
-//             plugin->attack = (float*) data;
-//             break;
-//         case SHAPE:
-//             plugin->shape = (float*) data;
-//             break;
-//         case RANDOM_SHAPE:
-//             plugin->random_shape = (float*) data;
-//             break;
-//         case DEPTH:
-//             plugin->depth = (float*) data;
-//             break;
-//         case VOLUME:
-//             plugin->volume = (float*) data;
-//             break;
-//         case SPEED_EFFECT_1:
-//             plugin->speed_effect_1 = (float*) data;
-//             break;
-//         case SPEED_EFFECT_1_VOL:
-//             plugin->speed_effect_1_vol = (float*) data;
-//             break;
-//         case SPEED_EFFECT_2:
-//             plugin->speed_effect_2 = (float*) data;
-//             break;
-//         case SPEED_EFFECT_2_VOL:
-//             plugin->speed_effect_2_vol = (float*) data;
-//             break;
-//         case MIDI_NOTE:
-//             plugin->midi_note = (float*) data;
-//             break;
-//         case MIDI_VELOCITY_MIN:
-//             plugin->midi_velocity_min = (float*) data;
-//             break;
-//         case MIDI_VELOCITY_MAX:
-//             plugin->midi_velocity_max = (float*) data;
-//             break;
-//         case MIDI_INERTIA:
-//             plugin->midi_inertia = (float*) data;
-//             break;
-//     }
-// }
 
 LV2_Handle CvRamp::instantiate(const LV2_Descriptor* descriptor, double samplerate, const char* bundle_path, 
                   const LV2_Feature* const* features)

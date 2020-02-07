@@ -675,10 +675,12 @@ void Ramp::start_period()
         current_depth = RAIL(*depth, 0, 1);
     }
     
-    current_speed_effect_1 = float(*speed_effect_1);
-    current_speed_effect_1_vol = powf(10.0f, (*speed_effect_1_vol)/20.0f);
-    current_speed_effect_2 = float(*speed_effect_2);
-    current_speed_effect_2_vol = powf(10.0f, (*speed_effect_2_vol)/20.0f);
+    if (not is_cv_ramp){
+        current_speed_effect_1 = float(*speed_effect_1);
+        current_speed_effect_1_vol = powf(10.0f, (*speed_effect_1_vol)/20.0f);
+        current_speed_effect_2 = float(*speed_effect_2);
+        current_speed_effect_2_vol = powf(10.0f, (*speed_effect_2_vol)/20.0f);
+    }
 }
 
 
@@ -1011,16 +1013,15 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
         /* save audio sample */
         plugin->audio_memory[plugin->period_audio_start + plugin->period_count] = plugin->in[i];
         
-        float period_factor = 1;
+        float period_factor = 1.0f;
         float v = plugin->current_volume;
         float d = plugin->current_depth;
         
-        float oct_period_factor = 0;
-        float speed_effect_1_value = 0;
-        float speed_effect_2_value = 0;
+        float oct_period_factor = 0.0f;
+        float speed_effect_1_value = 0.0f;
+        float speed_effect_2_value = 0.0f;
         
         if (start_sample == int(i)){
-            plugin->bar_beats = 1.00;
             plugin->set_running_step(FIRST_PERIOD, i);
         }
         
@@ -1071,9 +1072,6 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
                     
                     if (plugin->period_count == 0){
                         plugin->send_midi_note(i);
-//                         if (not plugin->host_speed){
-//                             plugin->bar_beats = 0.00;
-//                         }
                     }
                     
                     if (plugin->period_count < plugin->period_peak){
@@ -1202,7 +1200,6 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
         
         plugin->last_global_factor = (1 - (1-period_factor) * d) * v;
         plugin->oct_period_factor = oct_period_factor;
-        
         
         if (plugin->is_cv_ramp){
             plugin->out[i] = plugin->last_global_factor * 10.0f;
