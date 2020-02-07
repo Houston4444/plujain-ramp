@@ -417,7 +417,7 @@ void Ramp::set_period_properties(bool hot=false)
     } else {
         period_length = default_fade;
         period_death = period_length;
-        period_peak = 0;
+        period_peak = period_length / 2;
         period_hot_node_count = 0;
         period_hot_node_ratio = 0.0f;
         return;
@@ -462,15 +462,19 @@ void Ramp::set_period_properties(bool hot=false)
     float bb_pre_start = float(current_pre_start) / float(current_pre_start_units) ;
     float bb_offset = 0.125 * float(current_beat_offset); /* 0.125 for beat/8 */
     
-    if (running_step == FIRST_PERIOD and current_pre_start > 0){
+    if (running_step == FIRST_PERIOD){
         if (period_count == 0){
             bar_beats_hot_node = 0.00;
-            bar_beats_target = bb_pre_start + bb_offset;
+            bar_beats_target = 0.00;
         } else {
             bar_beats_hot_node += (period_count - period_hot_node_count)
                                         / double((float(60.0f / current_tempo) * samplerate));
             current_tempo = get_tempo();
-        }                            
+        }
+    }
+        
+    if (running_step == FIRST_PERIOD and current_pre_start > 0){
+        bar_beats_target = bb_pre_start + bb_offset;                 
     } else {
         if (period_count == 0){
             bar_beats_hot_node = bar_beats_target;
@@ -598,6 +602,7 @@ void Ramp::set_period_properties(bool hot=false)
             }
         }
     }
+    
     
     /* finally, set period properties (length, death and peak) */
     period_length = period_count

@@ -360,7 +360,7 @@ lv2:port
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 28;
+    lv2:index 24;
     lv2:symbol "midi_note";
     lv2:name "MIDI Note",
         "Note MIDI"@fr;
@@ -372,7 +372,7 @@ lv2:port
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 29;
+    lv2:index 25;
     lv2:symbol "midi_velocity_min";
     lv2:name "MIDI Velocity Minimum",
         "Velocité MIDI Minimum"@fr;
@@ -384,7 +384,7 @@ lv2:port
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 30;
+    lv2:index 26;
     lv2:symbol "midi_velocity_max";
     lv2:name "MIDI Velocity Maximum",
         "Vélocité MIDI Maximum"@fr;
@@ -396,7 +396,7 @@ lv2:port
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 31;
+    lv2:index 27;
     lv2:symbol "midi_inertia";
     lv2:name "MIDI Inertia",
         "Inertie MIDI"@fr;
