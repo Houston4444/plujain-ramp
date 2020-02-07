@@ -88,8 +88,8 @@ public:
     LV2_Atom_Sequence *midi_out;
     float *active;
     float *mode;
-//     float *enter_threshold;
-//     float *leave_threshold;
+    float *enter_threshold;
+    float *leave_threshold;
     float *pre_start;
     float *pre_start_units;
     float *beat_offset;
@@ -219,6 +219,7 @@ public:
 	PluginURIs uris;
     
     bool is_live_ramp;
+    bool is_cv_ramp;
 }; 
 
 #endif // RAMP_H_INCLUDED

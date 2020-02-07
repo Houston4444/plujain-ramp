@@ -13,12 +13,12 @@
 @prefix ue: <http://lv2plug.in/ns/extensions/units#>.
 @prefix lv2pg:   <http://lv2plug.in/ns/ext/port-groups#>.
 
-@prefix ramp_live_lv2: <http://plujain/plugins/ramp_live#> .
+@prefix ramp_live_lv2: <http://plujain/plugins/ramp_live_cv#> .
 
-<http://plujain/plugins/ramp_live>
+<http://plujain/plugins/ramp_live_cv>
 a lv2:Plugin, lv2:ModulatorPlugin;
 
-doap:name "Plujain-Ramp Live";
+doap:name "Plujain-Ramp Live CV";
 
 doap:developer [
     foaf:name "Houston4444";

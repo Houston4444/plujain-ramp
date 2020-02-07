@@ -158,6 +158,7 @@ Ramp::Ramp(double rate){
     waiting_restart_on_bar = false;
     
     is_live_ramp = false;
+    is_cv_ramp = false;
 }
 
 uint32_t Ramp::get_mode(){
@@ -1203,13 +1204,14 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
         plugin->oct_period_factor = oct_period_factor;
         
         
-        
-        plugin->out[i] = plugin->in[i] * plugin->last_global_factor
-                        + speed_effect_1_value * plugin->current_speed_effect_1_vol
-                        + speed_effect_2_value * plugin->current_speed_effect_2_vol;
-        
-//         plugin->out_test[i] = plugin->last_global_factor * 10.0f;
-                        
+        if (plugin->is_cv_ramp){
+            plugin->out[i] = plugin->last_global_factor * 10.0f;
+        } else {
+            plugin->out[i] = plugin->in[i] * plugin->last_global_factor
+                            + speed_effect_1_value * plugin->current_speed_effect_1_vol
+                            + speed_effect_2_value * plugin->current_speed_effect_2_vol;
+        }
+                            
         plugin->period_count++;
         
         if (plugin->period_count >= plugin->period_length){

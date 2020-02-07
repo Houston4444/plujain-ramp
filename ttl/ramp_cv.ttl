@@ -10,15 +10,16 @@
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
 @prefix time:  <http://lv2plug.in/ns/ext/time#>.
 @prefix units: <http://lv2plug.in/ns/extensions/units#>.
-@prefix ue: <http://lv2plug.in/ns/extensions/units#>.
+@prefix ue: <http://lv2plug.in/ns/extensions/units#> .
 @prefix lv2pg:   <http://lv2plug.in/ns/ext/port-groups#>.
 
-@prefix ramp_live_lv2: <http://plujain/plugins/ramp_live#> .
+@prefix ramp_lv2: <http://plujain/plugins/ramp_cv#> .
 
-<http://plujain/plugins/ramp_live>
+
+<http://plujain/plugins/ramp_cv>
 a lv2:Plugin, lv2:ModulatorPlugin;
 
-doap:name "Plujain-Ramp Live";
+doap:name "Plujain-Ramp CV";
 
 doap:developer [
     foaf:name "Houston4444";
@@ -39,13 +40,8 @@ doap:license <GPL>;
 
 rdfs:comment """
 mono ramp tremolo
-To synchronize multiples instances of Plujain Ramp Live, the better method is to use one instance as the master one.
-The midi output of this master instance has to be connected to all midi inputs of slave instances.
-The master instance should be in "always active" or "Start with threshold" mode, the slaves instances in "Midi in Slave".
-Tip: if you want to apply this effect to distorded or high reverb effects, but you want a reactiv "Start with threshold" mode,you can simply connect the instrument source to the audio input of the master instance and not connect its audio output,then set one slave instance to "Midi in slave/Stop is bypass" mode.
-""",
-"""La meilleure méthode pour synchroniser plusieurs instances de Plujain Ramp Live est d'utiliser une instance comme maître et toutes les autres comme esclaves. Connectez la sortie midi de l'instance maître à l'entrée midi de chaque esclave, réglez l'instance maître sur le mode "Always Active" ou "Start with Threshold" et les instances esclaves sur le mode "Midi In Slave".
-Astuce: Si vous voulez appliquer l'effet à un son passé dans une distortion ou une grosse reverberation mais que vous voulez que le mode "Start With Threshold" soit bien réactif, connectez directement la source de l'instrument sur l'entrée audio de l'instance maître sans connecter sa sortie, puis réglez une instance esclave sur le mode "Midi In Slave/Stop is Bypass"."""@fr;
+
+""";
 
 lv2:port
 [
@@ -58,30 +54,24 @@ lv2:port
     a atom:AtomPort, lv2:InputPort;
     atom:bufferType atom:Sequence;
     atom:supports time:Position;
-    atom:supports midi:MidiEvent;
     lv2:index 1;
-    lv2:symbol "midi_in";
-    lv2:name "Midi In";
+    lv2:symbol "ctrl_in";
+    lv2:name "Ctrl In";
 ],
 [
-    a lv2:AudioPort, lv2:OutputPort;
+    a lv2:CVPort, lv2:OutputPort;
     lv2:index 2;
     lv2:symbol "Out";
     lv2:name "Out";
-],
-[
-    a atom:AtomPort, lv2:OutputPort;
-    atom:bufferType atom:Sequence;
-    atom:supports midi:MidiEvent;
-    lv2:index 3;
-    lv2:symbol "midiout";
-    lv2:name "MIDI Out";
+    lv2:default 0;
+    lv2:minimum 0;
+    lv2:maximum 10;
 ],
 [
     a lv2:InputPort, lv2:ControlPort ;
-    lv2:index 4;
+    lv2:index 3;
     lv2:symbol "on" ;
-    lv2:name "Active" ,
+    lv2:name "Active",
         "Actif"@fr ;
     lv2:default 1 ;
     lv2:minimum 0 ;
@@ -91,62 +81,20 @@ lv2:port
     lv2:designation lv2:enabled ;
 ],
 [
-    a lv2:ControlPort, lv2:InputPort;
-    lv2:index 5;
-    lv2:symbol "mode";
-    lv2:name "Mode" ,
-        "Mode"@fr ;
-    lv2:portProperty lv2:integer;
-    lv2:portProperty lv2:enumeration ;
-        lv2:scalePoint [rdfs:label "Always Active", "Toujours Actif"@fr; rdf:value 0];
-        lv2:scalePoint [rdfs:label "Start with Threshold", "Démarrer avec un seuil"@fr; rdf:value 1];
-        lv2:scalePoint [rdfs:label "Host Transport", "Transport de l'hôte"@fr; rdf:value 2];
-        lv2:scalePoint [rdfs:label "Midi In Slave", "Esclave MIDI"@fr; rdf:value 3];
-        lv2:scalePoint [rdfs:label "Midi In Slave / Stop is Bypass", "Esclave MIDI / Court-circuiter à l'arrêt"@fr; rdf:value 4];
-    lv2:default 0;
-    lv2:minimum 0;
-    lv2:maximum 4;
-    lv2pg:group ramp_live_lv2:G101_AM;
-],
-[
-    a lv2:ControlPort, lv2:InputPort;
-    lv2:index 6;
-    lv2:symbol "enter_treshold";
-    lv2:name "Enter Threshold" ,
-        "Seuil d'Entrée"@fr ;
-    units:unit units:db ;
-    lv2:default -40;
-    lv2:minimum -80;
-    lv2:maximum 0;
-    lv2pg:group ramp_live_lv2:G101_AM;
-],
-[
-    a lv2:ControlPort, lv2:InputPort;
-    lv2:index 7;
-    lv2:symbol "leave_treshold";
-    lv2:name "Leave Threshold",
-        "Seuil de Sortie"@fr ;
-    units:unit units:db ;
-    lv2:default -65;
-    lv2:minimum -80;
-    lv2:maximum 0;
-    lv2pg:group ramp_live_lv2:G101_AM;
-],
-[
     a lv2:InputPort, lv2:ControlPort ;
-    lv2:index 8 ;
+    lv2:index 4 ;
     lv2:symbol "pre_start" ;
-    lv2:name "Pre Start" ,
-        "Pré-démarrage"@fr ;
+    lv2:name "Pre Start",
+        "Pré-démarrage"@fr;
     lv2:default 0 ;
     lv2:minimum 0 ;
     lv2:maximum 32 ;
     lv2:portProperty lv2:integer ;
-    lv2pg:group ramp_live_lv2:G102_RP;
+    lv2pg:group ramp_lv2:G102_RP;
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 9;
+    lv2:index 5;
     lv2:symbol "pre_start_units";
     lv2:name "Pre Start Units",
         "Unités du Pré-démarrage"@fr ;
@@ -161,47 +109,34 @@ lv2:port
     lv2:default 2;
     lv2:minimum 1;
     lv2:maximum 8;
-    lv2pg:group ramp_live_lv2:G102_RP;
+    lv2pg:group ramp_lv2:G102_RP;
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 10;
+    lv2:index 6;
     lv2:symbol "beat_offset";
     lv2:name "Beat Offset",
         "Placement"@fr ;
     lv2:default 0;
     lv2:minimum -1;
     lv2:maximum 1;
-    lv2pg:group ramp_live_lv2:G102_RP;
+    lv2pg:group ramp_lv2:G102_RP;
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 11;
-    lv2:symbol "random_offset";
+    lv2:index 7;
+    lv2:symbol "random_beat_offset";
     lv2:name "Random Beat Offset",
         "Placement aléatoire"@fr ;
     lv2:default 0;
     lv2:minimum 0;
     lv2:maximum 1;
-    lv2pg:group ramp_live_lv2:G102_RP;
-],
-[
-    a lv2:InputPort, lv2:ControlPort ;
-    lv2:index 12;
-    lv2:symbol "temposync" ;
-    lv2:name "Sync Tempo", 
-        "Tempo Synchronisé"@fr ;
-    lv2:default 1 ;
-    lv2:minimum 0 ;
-    lv2:maximum 1 ;
-    lv2:portProperty lv2:integer ;
-    lv2:portProperty lv2:toggled ;
-    lv2pg:group ramp_live_lv2:G103_SD;
+    lv2pg:group ramp_lv2:G102_RP;
 ],
 [
     a lv2:InputPort ;
     a lv2:ControlPort ;
-    lv2:index 13;
+    lv2:index 8;
     lv2:symbol "bpm_host" ;
     lv2:name "Host BPM" ;
     lv2:portProperty epp:hasStrictBounds ;
@@ -211,23 +146,11 @@ lv2:port
     ue:unit ue:bpm ;
     lv2:portProperty pprop:notOnGUI ;
     lv2:designation <http://lv2plug.in/ns/ext/time#beatsPerMinute> ;
-    lv2pg:group ramp_live_lv2:G103_SD;
+    lv2pg:group ramp_lv2:G103_SD;
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 14;
-    lv2:symbol "tempo";
-    lv2:name "Tempo",
-        "Tempo"@fr ;
-#     lv2:portProperty lv2:integer;
-    lv2:default 120;
-    lv2:minimum 20;
-    lv2:maximum 280;
-    lv2pg:group ramp_live_lv2:G103_SD;
-],
-[
-    a lv2:ControlPort, lv2:InputPort;
-    lv2:index 15;
+    lv2:index 9;
     lv2:symbol "division";
     lv2:name "Division",
         "Division"@fr ;
@@ -251,11 +174,11 @@ lv2:port
     lv2:default 11;
     lv2:minimum 0;
     lv2:maximum 14;
-    lv2pg:group ramp_live_lv2:G103_SD;
+    lv2pg:group ramp_lv2:G103_SD;
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 16;
+    lv2:index 10;
     lv2:symbol "max_duration";
     lv2:name "Max Duration",
         "Durée Maximale"@fr ;
@@ -271,11 +194,11 @@ lv2:port
     lv2:maximum 8;
     units:unit units:beat ;
     lv2:portProperty pprop:logarithmic ;
-    lv2pg:group ramp_live_lv2:G103_SD;
+    lv2pg:group ramp_lv2:G103_SD;
 ],
 [
     a lv2:InputPort, lv2:ControlPort ;
-    lv2:index 17;
+    lv2:index 11;
     lv2:symbol "half_speed" ;
     lv2:name "Half Speed",
         "Demi Vitesse"@fr ;
@@ -284,12 +207,12 @@ lv2:port
     lv2:maximum 1 ;
     lv2:portProperty lv2:integer ;
     lv2:portProperty lv2:toggled ;
-    lv2pg:group ramp_live_lv2:G103_SD;
+    lv2pg:group ramp_lv2:G103_SD;
 ],
 [
     a lv2:InputPort, lv2:ControlPort ;
-    lv2:index 18;
-    lv2:symbol "double_speed" ;
+    lv2:index 12;
+    lv2:symbol "double_speed";
     lv2:name "Double Speed",
         "Double Vitesse"@fr ;
     lv2:default 0 ;
@@ -297,12 +220,12 @@ lv2:port
     lv2:maximum 1 ;
     lv2:portProperty lv2:integer ;
     lv2:portProperty lv2:toggled ;
-    lv2pg:group ramp_live_lv2:G103_SD;
+    lv2pg:group ramp_lv2:G103_SD;
 ],
 
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 19;
+    lv2:index 13;
     lv2:symbol "attack";
     lv2:name "Attack",
         "Attaque"@fr ;
@@ -310,57 +233,57 @@ lv2:port
     lv2:minimum 0.5;
     lv2:maximum 200;
     units:unit units:ms ;
-    lv2pg:group ramp_live_lv2:G104_GS;
+    lv2pg:group ramp_lv2:G104_GS;
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 20;
+    lv2:index 14;
     lv2:symbol "shape";
     lv2:name "Shape",
         "Forme"@fr ;
     lv2:default 0;
     lv2:minimum -4;
     lv2:maximum 4;
-    lv2pg:group ramp_live_lv2:G104_GS;
+    lv2pg:group ramp_lv2:G104_GS;
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 21;
+    lv2:index 15;
     lv2:symbol "random_shape";
     lv2:name "Random Shape",
         "Forme aléatoire"@fr ;
     lv2:default 0;
     lv2:minimum 0;
     lv2:maximum 1;
-    lv2pg:group ramp_live_lv2:G104_GS;
+    lv2pg:group ramp_lv2:G104_GS;
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 22;
+    lv2:index 16;
     lv2:symbol "depth";
     lv2:name "Depth",
         "Profondeur"@fr ;
     lv2:default 1;
     lv2:minimum 0;
     lv2:maximum 1;
-    lv2pg:group ramp_live_lv2:G104_GS;
+    lv2pg:group ramp_lv2:G104_GS;
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 23;
+    lv2:index 17;
     lv2:symbol "volume";
     lv2:name "Volume",
         "Volume"@fr ;
     units:unit units:db ;
-    lv2:scalePoint [rdfs:label "Mute", "Muet"@fr; rdf:value -80];
+    lv2:scalePoint [rdfs:label "Mute"; rdf:value -80];
     lv2:default 0;
     lv2:minimum -80;
     lv2:maximum 12;
-    lv2pg:group ramp_live_lv2:G104_GS;
+    lv2pg:group ramp_lv2:G104_GS;
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 24;
+    lv2:index 18;
     lv2:symbol "speed_effect_1";
     lv2:name "Speed Effect 1",
         "Effet de Vitesse 1"@fr ;
@@ -382,24 +305,24 @@ lv2:port
     lv2:default 0.5;
     lv2:minimum -4;
     lv2:maximum 4;
-    lv2pg:group ramp_live_lv2:G105_SE;
+    lv2pg:group ramp_lv2:G105_SE;
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 25;
+    lv2:index 19;
     lv2:symbol "speed_effect_1_vol";
     lv2:name "Speed Effect 1 Volume",
         "Effet de Vitesse 1 Volume"@fr ;
     units:unit units:db ;
-    lv2:scalePoint [rdfs:label "Mute", "Muet"@fr; rdf:value -80];
+    lv2:scalePoint [rdfs:label "Mute"; rdf:value -80];
     lv2:default -80;
     lv2:minimum -80;
     lv2:maximum 12;
-    lv2pg:group ramp_live_lv2:G105_SE;
+    lv2pg:group ramp_lv2:G105_SE;
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 26;
+    lv2:index 20;
     lv2:symbol "speed_effect_2";
     lv2:name "Speed Effect 2",
         "Effet de Vitesse 2"@fr;
@@ -421,111 +344,42 @@ lv2:port
     lv2:default 2;
     lv2:minimum -4;
     lv2:maximum 4;
-    lv2pg:group ramp_live_lv2:G105_SE;
+    lv2pg:group ramp_lv2:G105_SE;
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 27;
+    lv2:index 21;
     lv2:symbol "speed_effect_2_vol";
     lv2:name "Speed Effect 2 Volume",
         "Effet de Vitesse 2 Volume"@fr;
     units:unit units:db ;
-    lv2:scalePoint [rdfs:label "Mute", "Muet"@fr; rdf:value -80];
+    lv2:scalePoint [rdfs:label "Mute"; rdf:value -80];
     lv2:default -80;
     lv2:minimum -80;
     lv2:maximum 12;
-    lv2pg:group ramp_live_lv2:G105_SE;
-],
-[
-    a lv2:ControlPort, lv2:InputPort;
-    lv2:index 28;
-    lv2:symbol "midi_note";
-    lv2:name "MIDI Note",
-        "Note MIDI"@fr;
-    lv2:portProperty lv2:integer;
-    lv2:default 36;
-    lv2:minimum 0;
-    lv2:maximum 127;
-    lv2pg:group ramp_live_lv2:G106_MIDI;
-],
-[
-    a lv2:ControlPort, lv2:InputPort;
-    lv2:index 29;
-    lv2:symbol "midi_velocity_min";
-    lv2:name "MIDI Velocity Minimum",
-        "Velocité MIDI Minimum"@fr;
-    units:unit units:db ;
-    lv2:default -70;
-    lv2:minimum -80;
-    lv2:maximum 0;
-    lv2pg:group ramp_live_lv2:G106_MIDI;
-],
-[
-    a lv2:ControlPort, lv2:InputPort;
-    lv2:index 30;
-    lv2:symbol "midi_velocity_max";
-    lv2:name "MIDI Velocity Maximum",
-        "Vélocité MIDI Maximum"@fr;
-    units:unit units:db ;
-    lv2:default -6;
-    lv2:minimum -80;
-    lv2:maximum +20;
-    lv2pg:group ramp_live_lv2:G106_MIDI;
-],
-[
-    a lv2:ControlPort, lv2:InputPort;
-    lv2:index 31;
-    lv2:symbol "midi_inertia";
-    lv2:name "MIDI Inertia",
-        "Inertie MIDI"@fr;
-    lv2:default 0;
-    lv2:minimum 0;
-    lv2:maximum 0.99;
-    lv2pg:group ramp_live_lv2:G106_MIDI;
+    lv2pg:group ramp_lv2:G105_SE;
 ].
-# [
-#     a lv2:CVPort, lv2:OutputPort;
-#     lv2:index 32;
-#     lv2:default 0;
-#     lv2:minimum 0;
-#     lv2:maximum 10;
-#     lv2:symbol "Out_test";
-#     lv2:name "Out_test";
-# ].
 
-ramp_live_lv2:G101_AM
-	a lv2pg:InputGroup;
-	lv2:name "Activation Mode",
-        "Mode d'activation"@fr;
-	lv2:symbol "AM" .
-
-ramp_live_lv2:G102_RP
+ramp_lv2:G102_RP
 	a lv2pg:InputGroup;
 	lv2:name "Rhythmic Placement",
         "Placement rythmique"@fr;
 	lv2:symbol "RP" .
 	
-ramp_live_lv2:G103_SD
+ramp_lv2:G103_SD
     a lv2pg:InputGroup;
     lv2:name "Speed",
         "Vitesse"@fr;
     lv2:symbol "speedgp" .
     
-ramp_live_lv2:G104_GS
+ramp_lv2:G104_GS
     a lv2pg:InputGroup;
     lv2:name "Global Shape",
         "Forme Globale"@fr;
     lv2:symbol "global_shape" .
     
-ramp_live_lv2:G105_SE
+ramp_lv2:G105_SE
     a lv2pg:InputGroup;
     lv2:name "Octave Effects",
         "Effets d'octave"@fr;
     lv2:symbol "octave_effects" .
-    
-ramp_live_lv2:G106_MIDI
-    a lv2pg:InputGroup;
-    lv2:name "Midi Note",
-        "Note Midi"@fr;
-    lv2:symbol "midi_note_gp" .
-    

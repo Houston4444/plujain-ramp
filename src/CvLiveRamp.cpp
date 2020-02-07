@@ -1,4 +1,4 @@
-#include "LiveRamp.h"
+#include "CvLiveRamp.h"
 #define MAP(v, inmin, inmax, outmin, outmax) ((outmin + ((v - inmin)/(inmax - inmin)) * (outmax - outmin)))
 #define RAIL(v, min, max) (MIN((max), MAX((min), (v))))
 
@@ -24,171 +24,14 @@ map_mem_uris (LV2_URID_Map* map, PluginURIs* uris)
 	uris->time_speed          = map->map (map->handle, LV2_TIME__speed);
 }
 
-LiveRamp::LiveRamp(double rate) : Ramp(rate){
-    is_live_ramp = true;
+CvLiveRamp::CvLiveRamp(double rate) : LiveRamp(rate){
+    is_cv_ramp = true;
 }
-
-uint32_t LiveRamp::get_mode(){
-    return ROUND(RAIL(*mode, 0, 4));
-}
-
-float LiveRamp::get_enter_threshold(){
-    return powf(10.0f, (*enter_threshold)/20.0f);
-}
-
-float LiveRamp::get_leave_threshold(){
-    float tmp_lt = powf(10.0f, (*leave_threshold)/20.0f);
-    if (*leave_threshold <= -80.0f){
-        tmp_lt = 0.0f;
-    }
-    return tmp_lt;
-}
-
-uint8_t LiveRamp::get_midi_note(){
-    uint8_t note = uint8_t(*midi_note);
-    return note;
-}
-
-void LiveRamp::send_midi_start_stop(bool start, uint32_t frame)
+    
+void CvLiveRamp::connect_port(LV2_Handle instance, uint32_t port, void *data)
 {
-    LV2_Atom midiatom;
-    midiatom.type = uris.midi_MidiEvent;
-    midiatom.size = 3;
-    
-    uint8_t msg[3];
-    msg[0] = 0xfa;
-    if (!start){
-        msg[0] = 0xfc;
-    }
-    msg[1] = 0;
-    msg[2] = 0;
-    
-    if (0 == lv2_atom_forge_frame_time (&forge, frame)) return;
-	if (0 == lv2_atom_forge_raw (&forge, &midiatom, sizeof (LV2_Atom))) return;
-	if (0 == lv2_atom_forge_raw (&forge, msg, 3)) return;
-    lv2_atom_forge_pad (&forge, sizeof (LV2_Atom) + 3);
-    
-    if (instance_started_since > (2 * samplerate)){
-        start_sent_after_start = true;
-    }
-}
-
-void LiveRamp::send_midi_note(uint32_t frame)
-{
-    LV2_Atom midiatom;
-    midiatom.type = uris.midi_MidiEvent;
-    midiatom.size = 3;
-    
-    uint8_t msg_off[3];
-    msg_off[0] = 0x80;
-    msg_off[1] = active_note; /*get ex midi note */
-    msg_off[2] = last_velocity;
-    
-    active_note = get_midi_note();
-//     uint8_t velocity = peak_in_threshold * 127.0;
-    uint8_t velocity_base;
-    uint8_t velocity;
-    
-    float v_min = powf(10.0f, *midi_velocity_min / 20.0f);
-    float v_max = powf(10.0f, *midi_velocity_max / 20.0f);
-    
-    if (peak_in_threshold <= v_min){
-        velocity_base = 0;
-    } else if (peak_in_threshold >= v_max){
-        velocity_base = 127;
-    } else {
-        velocity_base = MAP(peak_in_threshold, v_min, v_max, 0.0f, 1.0f) * 127;
-    }
-    if (velocity_base < last_velocity) {
-        velocity = velocity_base * (1- *midi_inertia) + last_velocity * *midi_inertia;
-    } else {
-        velocity = velocity_base;
-    }
-    
-    velocity = RAIL(velocity, 0, 127);
-    
-    if (velocity == last_velocity){
-        if (velocity_base > last_velocity){
-            velocity += 1;
-        } else if (velocity_base < last_velocity){
-            velocity -= 1;
-        }
-    }
-    
-    last_velocity = velocity;
-    
-//     printf("Velo %.2f ; %i\n", peak_in_threshold, velocity);
-    
-    uint8_t msg[3];
-    msg[0] = 0x90;
-    msg[1] = active_note;
-    msg[2] = velocity;
-    
-    uint32_t frame_off;
-    if (frame == 0){
-        frame_off = 0;
-        frame = 1;
-    } else {
-        frame_off = frame -1;
-    }
-    
-    if (note_pressed){
-        if (0 == lv2_atom_forge_frame_time (&forge, frame_off)) return;
-        if (0 == lv2_atom_forge_raw (&forge, &midiatom, sizeof (LV2_Atom))) return;
-        if (0 == lv2_atom_forge_raw (&forge, msg_off, 3)) return;
-        lv2_atom_forge_pad (&forge, sizeof (LV2_Atom) + 3);
-    }
-    
-    if (0 == lv2_atom_forge_frame_time (&forge, frame)) return;
-	if (0 == lv2_atom_forge_raw (&forge, &midiatom, sizeof (LV2_Atom))) return;
-	if (0 == lv2_atom_forge_raw (&forge, msg, 3)) return;
-    lv2_atom_forge_pad (&forge, sizeof (LV2_Atom) + 3);
-    
-    note_pressed = true;
-}
-
-void LiveRamp::send_midi_note_off(uint32_t frame){
-    if (! note_pressed){
-        return;
-    }
-    
-    LV2_Atom midiatom;
-    midiatom.type = uris.midi_MidiEvent;
-    midiatom.size = 3;
-    
-    uint8_t msg_off[3];
-    msg_off[0] = 0x80;
-    msg_off[1] = active_note;
-    msg_off[2] = 100;
-    
-    if (0 == lv2_atom_forge_frame_time (&forge, frame)) return;
-	if (0 == lv2_atom_forge_raw (&forge, &midiatom, sizeof (LV2_Atom))) return;
-	if (0 == lv2_atom_forge_raw (&forge, msg_off, 3)) return;
-    lv2_atom_forge_pad (&forge, sizeof (LV2_Atom) + 3);
-    
-    note_pressed = false;
-}
-
-float LiveRamp::get_tempo()
-{
-    float tempo_now;
-    if (*sync_bpm > 0.5){
-        if (host_info and current_mode == MODE_HOST_TRANSPORT){
-            tempo_now = host_bpm;
-        } else {
-            tempo_now = *host_tempo;
-        }
-    } else {
-        tempo_now = *tempo;
-    }
-    
-    return tempo_now;
-} 
-
-void LiveRamp::connect_port(LV2_Handle instance, uint32_t port, void *data)
-{
-    LiveRamp *plugin;
-    plugin = (LiveRamp *) instance;
+    CvLiveRamp *plugin;
+    plugin = (CvLiveRamp *) instance;
     
     enum {IN, MIDI_IN, OUT, MIDI_OUT,
       ACTIVE, MODE, ENTER_THRESHOLD, LEAVE_THRESHOLD,
@@ -299,10 +142,10 @@ void LiveRamp::connect_port(LV2_Handle instance, uint32_t port, void *data)
     }
 }
 
-LV2_Handle LiveRamp::instantiate(const LV2_Descriptor* descriptor, double samplerate, const char* bundle_path, 
+LV2_Handle CvLiveRamp::instantiate(const LV2_Descriptor* descriptor, double samplerate, const char* bundle_path, 
                   const LV2_Feature* const* features)
 {
-    LiveRamp *plugin = new LiveRamp(samplerate);
+    CvLiveRamp *plugin = new CvLiveRamp(samplerate);
     
     plugin->samplerate = samplerate;
     

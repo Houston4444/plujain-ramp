@@ -1,3 +1,6 @@
+#ifndef LIVERAMP_H_INCLUDED
+#define LIVERAMP_H_INCLUDED
+
 
 #include "Ramp.h"
 
@@ -16,6 +19,8 @@ public:
     void send_midi_start_stop(bool start, uint32_t frame);
     void send_midi_note(uint32_t frame);
     void send_midi_note_off(uint32_t frame);
+    float *enter_threshold;
+    float *leave_threshold;
     float *sync_bpm;
     float *tempo;
     float *midi_note;
@@ -23,3 +28,5 @@ public:
     float *midi_velocity_max;
     float *midi_inertia;
 };
+
+#endif // LIVERAMP_H_INCLUDED
