@@ -6,15 +6,14 @@
 #include <map>
 #include <iostream>
 
-
-
-// #include "Ramp.h"
 #include "LiveRamp.h"
 /**********************************************************************************************************************************************************/
 
 
 #define PLUGIN_URI "http://plujain/plugins/ramp"
 #define PLUGIN_URI_LIVE "http://plujain/plugins/ramp_live"
+#define PLUGIN_URI_CV "http://plujain/plugins/ramp_cv"
+#define PLUGIN_URI_CV_LIVE "http://plujain/plugins/ramp_cv_live"
 
 
 

@@ -11,6 +11,10 @@
 @prefix time:  <http://lv2plug.in/ns/ext/time#>.
 @prefix units: <http://lv2plug.in/ns/extensions/units#>.
 @prefix ue: <http://lv2plug.in/ns/extensions/units#> .
+@prefix lv2pg:   <http://lv2plug.in/ns/ext/port-groups#>.
+
+@prefix ramp_lv2: <http://plujain/plugins/ramp#> .
+
 
 <http://plujain/plugins/ramp>
 a lv2:Plugin, lv2:ModulatorPlugin;
@@ -83,6 +87,7 @@ lv2:port
     lv2:minimum 0 ;
     lv2:maximum 32 ;
     lv2:portProperty lv2:integer ;
+    lv2pg:group ramp_lv2:G102_RP;
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
@@ -101,6 +106,7 @@ lv2:port
     lv2:default 2;
     lv2:minimum 1;
     lv2:maximum 8;
+    lv2pg:group ramp_lv2:G102_RP;
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
@@ -111,11 +117,23 @@ lv2:port
     lv2:default 0;
     lv2:minimum -1;
     lv2:maximum 1;
+    lv2pg:group ramp_lv2:G102_RP;
+],
+[
+    a lv2:ControlPort, lv2:InputPort;
+    lv2:index 7;
+    lv2:symbol "random_beat_offset";
+    lv2:name "Random Beat Offset",
+        "Placement aléatoire"@fr ;
+    lv2:default 0;
+    lv2:minimum 0;
+    lv2:maximum 1;
+    lv2pg:group ramp_lv2:G102_RP;
 ],
 [
     a lv2:InputPort ;
     a lv2:ControlPort ;
-    lv2:index 7;
+    lv2:index 8;
     lv2:symbol "bpm_host" ;
     lv2:name "Host BPM" ;
     lv2:portProperty epp:hasStrictBounds ;
@@ -125,10 +143,11 @@ lv2:port
     ue:unit ue:bpm ;
     lv2:portProperty pprop:notOnGUI ;
     lv2:designation <http://lv2plug.in/ns/ext/time#beatsPerMinute> ;
+    lv2pg:group ramp_lv2:G103_SD;
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 8;
+    lv2:index 9;
     lv2:symbol "division";
     lv2:name "Division",
         "Division"@fr ;
@@ -152,10 +171,11 @@ lv2:port
     lv2:default 11;
     lv2:minimum 0;
     lv2:maximum 14;
+    lv2pg:group ramp_lv2:G103_SD;
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 9;
+    lv2:index 10;
     lv2:symbol "max_duration";
     lv2:name "Max Duration",
         "Durée Maximale"@fr ;
@@ -171,10 +191,11 @@ lv2:port
     lv2:maximum 8;
     units:unit units:beat ;
     lv2:portProperty pprop:logarithmic ;
+    lv2pg:group ramp_lv2:G103_SD;
 ],
 [
     a lv2:InputPort, lv2:ControlPort ;
-    lv2:index 10;
+    lv2:index 11;
     lv2:symbol "half_speed" ;
     lv2:name "Half Speed",
         "Demi Vitesse"@fr ;
@@ -183,10 +204,11 @@ lv2:port
     lv2:maximum 1 ;
     lv2:portProperty lv2:integer ;
     lv2:portProperty lv2:toggled ;
+    lv2pg:group ramp_lv2:G103_SD;
 ],
 [
     a lv2:InputPort, lv2:ControlPort ;
-    lv2:index 11;
+    lv2:index 12;
     lv2:symbol "double_speed";
     lv2:name "Double Speed",
         "Double Vitesse"@fr ;
@@ -195,11 +217,12 @@ lv2:port
     lv2:maximum 1 ;
     lv2:portProperty lv2:integer ;
     lv2:portProperty lv2:toggled ;
+    lv2pg:group ramp_lv2:G103_SD;
 ],
 
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 12;
+    lv2:index 13;
     lv2:symbol "attack";
     lv2:name "Attack",
         "Attaque"@fr ;
@@ -207,30 +230,44 @@ lv2:port
     lv2:minimum 0.5;
     lv2:maximum 200;
     units:unit units:ms ;
+    lv2pg:group ramp_lv2:G104_GS;
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 13;
+    lv2:index 14;
     lv2:symbol "shape";
     lv2:name "Shape",
         "Forme"@fr ;
     lv2:default 0;
     lv2:minimum -4;
     lv2:maximum 4;
+    lv2pg:group ramp_lv2:G104_GS;
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 14;
+    lv2:index 15;
+    lv2:symbol "random_shape";
+    lv2:name "Random Shape",
+        "Forme aléatoire"@fr ;
+    lv2:default 0;
+    lv2:minimum 0;
+    lv2:maximum 1;
+    lv2pg:group ramp_lv2:G104_GS;
+],
+[
+    a lv2:ControlPort, lv2:InputPort;
+    lv2:index 16;
     lv2:symbol "depth";
     lv2:name "Depth",
         "Profondeur"@fr ;
     lv2:default 1;
     lv2:minimum 0;
     lv2:maximum 1;
+    lv2pg:group ramp_lv2:G104_GS;
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 15;
+    lv2:index 17;
     lv2:symbol "volume";
     lv2:name "Volume",
         "Volume"@fr ;
@@ -239,10 +276,11 @@ lv2:port
     lv2:default 0;
     lv2:minimum -80;
     lv2:maximum 12;
+    lv2pg:group ramp_lv2:G104_GS;
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 16;
+    lv2:index 18;
     lv2:symbol "speed_effect_1";
     lv2:name "Speed Effect 1",
         "Effet de Vitesse 1"@fr ;
@@ -264,10 +302,11 @@ lv2:port
     lv2:default 0.5;
     lv2:minimum -4;
     lv2:maximum 4;
+    lv2pg:group ramp_lv2:G105_SE;
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 17;
+    lv2:index 19;
     lv2:symbol "speed_effect_1_vol";
     lv2:name "Speed Effect 1 Volume",
         "Effet de Vitesse 1 Volume"@fr ;
@@ -276,10 +315,11 @@ lv2:port
     lv2:default -80;
     lv2:minimum -80;
     lv2:maximum 12;
+    lv2pg:group ramp_lv2:G105_SE;
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 18;
+    lv2:index 20;
     lv2:symbol "speed_effect_2";
     lv2:name "Speed Effect 2",
         "Effet de Vitesse 2"@fr;
@@ -301,10 +341,11 @@ lv2:port
     lv2:default 2;
     lv2:minimum -4;
     lv2:maximum 4;
+    lv2pg:group ramp_lv2:G105_SE;
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 19;
+    lv2:index 21;
     lv2:symbol "speed_effect_2_vol";
     lv2:name "Speed Effect 2 Volume",
         "Effet de Vitesse 2 Volume"@fr;
@@ -313,4 +354,29 @@ lv2:port
     lv2:default -80;
     lv2:minimum -80;
     lv2:maximum 12;
+    lv2pg:group ramp_lv2:G105_SE;
 ].
+
+ramp_lv2:G102_RP
+	a lv2pg:InputGroup;
+	lv2:name "Rhythmic Placement",
+        "Placement rythmique"@fr;
+	lv2:symbol "RP" .
+	
+ramp_lv2:G103_SD
+    a lv2pg:InputGroup;
+    lv2:name "Speed",
+        "Vitesse"@fr;
+    lv2:symbol "speedgp" .
+    
+ramp_lv2:G104_GS
+    a lv2pg:InputGroup;
+    lv2:name "Global Shape",
+        "Forme Globale"@fr;
+    lv2:symbol "global_shape" .
+    
+ramp_lv2:G105_SE
+    a lv2pg:InputGroup;
+    lv2:name "Octave Effects",
+        "Effets d'octave"@fr;
+    lv2:symbol "octave_effects" .

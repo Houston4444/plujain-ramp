@@ -1,3 +1,6 @@
+#ifndef RAMP_H_INCLUDED
+#define RAMP_H_INCLUDED
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -85,13 +88,12 @@ public:
     LV2_Atom_Sequence *midi_out;
     float *active;
     float *mode;
-    float *enter_threshold;
-    float *leave_threshold;
+//     float *enter_threshold;
+//     float *leave_threshold;
     float *pre_start;
     float *pre_start_units;
     float *beat_offset;
     float *random_offset;
-    float *swing;
 //     float *sync_bpm;
 //     float *tempo;
     float *host_tempo;
@@ -218,3 +220,5 @@ public:
     
     bool is_live_ramp;
 }; 
+
+#endif // RAMP_H_INCLUDED

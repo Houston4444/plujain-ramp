@@ -234,9 +234,10 @@ void Ramp::connect_port(LV2_Handle instance, uint32_t port, void *data)
     Ramp *plugin;
     plugin = (Ramp *) instance;
 
-    enum {IN, CTRL_IN, OUT, ACTIVE, PRE_START, PRE_START_UNITS, BEAT_OFFSET, HOST_TEMPO,
-      DIVISION, MAX_DURATION, HALF_SPEED, DOUBLE_SPEED,
-      ATTACK, SHAPE, DEPTH, VOLUME, SPEED_EFFECT_1, SPEED_EFFECT_1_VOL, SPEED_EFFECT_2, SPEED_EFFECT_2_VOL, PLUGIN_PORT_COUNT};
+    enum {IN, CTRL_IN, OUT, ACTIVE, PRE_START, PRE_START_UNITS, BEAT_OFFSET, RANDOM_OFFSET,
+          HOST_TEMPO, DIVISION, MAX_DURATION, HALF_SPEED, DOUBLE_SPEED,
+          ATTACK, SHAPE, RANDOM_SHAPE, DEPTH, VOLUME,
+          SPEED_EFFECT_1, SPEED_EFFECT_1_VOL, SPEED_EFFECT_2, SPEED_EFFECT_2_VOL, PLUGIN_PORT_COUNT};
 
     switch (port)
     {
@@ -261,6 +262,9 @@ void Ramp::connect_port(LV2_Handle instance, uint32_t port, void *data)
         case BEAT_OFFSET:
             plugin->beat_offset = (float*) data;
             break;
+        case RANDOM_OFFSET:
+            plugin->random_offset = (float*) data;
+            break;
         case HOST_TEMPO:
             plugin->host_tempo = (float*) data;
             break;
@@ -281,6 +285,9 @@ void Ramp::connect_port(LV2_Handle instance, uint32_t port, void *data)
             break;
         case SHAPE:
             plugin->shape = (float*) data;
+            break;
+        case RANDOM_SHAPE:
+            plugin->random_shape = (float*) data;
             break;
         case DEPTH:
             plugin->depth = (float*) data;
@@ -451,9 +458,6 @@ void Ramp::set_period_properties(bool hot=false)
             
     }
     
-    int tmp_period_length;
-    int fback_period_length;
-    double fallback_bb_target;
     float bb_pre_start = float(current_pre_start) / float(current_pre_start_units) ;
     float bb_offset = 0.125 * float(current_beat_offset); /* 0.125 for beat/8 */
     
@@ -465,9 +469,7 @@ void Ramp::set_period_properties(bool hot=false)
             bar_beats_hot_node += (period_count - period_hot_node_count)
                                         / double((float(60.0f / current_tempo) * samplerate));
             current_tempo = get_tempo();
-        }
-        fallback_bb_target = bar_beats_target + current_division;  
-        /* not true for ternary, but fallback_bb_target has very few chances to be used in first period */                              
+        }                            
     } else {
         if (period_count == 0){
             bar_beats_hot_node = bar_beats_target;
@@ -495,14 +497,51 @@ void Ramp::set_period_properties(bool hot=false)
             }
         }
         
+        /* set period_hot_node_ratio and define the mininum time needed to finish the current period */
+        int needed_count = 0;
+        
+        if (period_count == 0){
+            period_hot_node_ratio = 0.0f;
+            needed_count = 0;
+            
+        } else if (period_count < period_peak){
+            period_hot_node_ratio += float((1.0f - float(period_hot_node_ratio))
+                                        * (float(period_count - period_hot_node_count)
+                                            / float(period_peak - period_hot_node_count)));
+            needed_count = int(float(1.0f - float(period_hot_node_ratio)) * MIN(period_peak, default_fade) + default_fade);
+            
+        } else if (period_count == period_peak){
+            period_hot_node_ratio = 1.0f;
+            needed_count = default_fade;
+
+        } else if (period_count < period_death){
+            period_hot_node_ratio -= float(period_hot_node_ratio)
+                                    * float(period_count - period_hot_node_count)
+                                        / float(period_death - period_hot_node_count);
+                                        
+            needed_count = int(float(period_hot_node_ratio) * default_fade * 0.5f);
+            
+        } else {
+            period_hot_node_ratio = 0.0f;
+            needed_count = 0;
+        }
+        
+        if (period_count < threshold_time){ 
+            needed_count = MAX(needed_count, threshold_time - period_count);
+        }
+        
+        double bar_beats_mini_need = needed_count / double((float(60.0f / current_tempo) * samplerate));
+            
+        /* define bar_beats_target, the musical start of the next period */
         if (ternary){
             float base_time = float(current_division) * 2;
             double pos_in_div = fmod(bar_beats_hot_node - bb_offset - bb_pre_start, base_time) / base_time;
             bool second_time = bool(pos_in_div >= 2/double(3.0));
             bar_beats_target = bar_beats_hot_node
-                               + bb_pre_start
-                               + bb_offset;
-                               
+                                + bb_pre_start
+                                + bb_offset
+                                + period_random_offset;
+                                
             if (not second_time){
                 bar_beats_target += double(base_time) * 2/double(3.0) - fmod(bar_beats_hot_node, base_time);
                 
@@ -514,7 +553,9 @@ void Ramp::set_period_properties(bool hot=false)
                     bar_beats_target -= base_time;
                 }
                 
-                fallback_bb_target = bar_beats_target + base_time/double(3);  
+                if (bar_beats_target - bar_beats_hot_node < bar_beats_mini_need){
+                    bar_beats_target += base_time / double(3);
+                }
                 
             } else {
                 bar_beats_target += base_time - fmod(bar_beats_hot_node, base_time);
@@ -527,39 +568,21 @@ void Ramp::set_period_properties(bool hot=false)
                     bar_beats_target -= base_time;
                 }
                 
-                fallback_bb_target = bar_beats_target + base_time * 2/double(3);
+                if (bar_beats_target - bar_beats_hot_node < bar_beats_mini_need){
+                    bar_beats_target += base_time * 2/double(3);
+                }
             }
         } else {
             bar_beats_target = bar_beats_hot_node
                                 + current_division
                                 - fmod(bar_beats_hot_node, current_division)
-                                + bb_pre_start;
+                                + bb_pre_start
+                                + bb_offset
+                                + period_random_offset;
             
             if (hot and current_division > 1.00){
                 bar_beats_target += fmod(beat_start_ref, current_division);
             }
-                                
-//             float swi = float(RAIL(*swing_inside, 0.25, 8));
-//             double inside_beat = fmod(bar_beats_target, swi) / swi;
-//             double outside_beat;
-//             
-//             float semi_groove = 0.5 + 0.166667 * *swing;
-//             
-//             float sixtenth = 1 / (swi * 16.0f); 
-//             
-//             if (inside_beat <= 0.5){
-// //                 outside_beat = double(semi_groove * inside_beat / 0.50);
-//                     outside_beat = inside_beat + (sixtenth * *swing) * powf(2 * inside_beat, 3);
-//             } else {
-// //                 outside_beat = semi_groove + double((inside_beat - 0.5) * (1.0 - semi_groove) * 2);
-//                 outside_beat = inside_beat + (sixtenth * *swing) * powf((1- (2.0f * float(inside_beat - 0.5))), 3); 
-//             }
-            
-//             bar_beats_target -= fmod(bar_beats_target, swi);
-//             bar_beats_target += outside_beat * swi;
-            bar_beats_target += bb_offset;
-//             double random_bb_offset = 0.125 * (2.0f * float(rand() / (RAND_MAX + 1.)) - 1.0f) * RAIL(*swing_inside, 0, 1);
-            bar_beats_target += period_random_offset;
 
             while (bar_beats_target <= bar_beats_hot_node){
                 bar_beats_target += current_division;
@@ -569,119 +592,25 @@ void Ramp::set_period_properties(bool hot=false)
                 bar_beats_target -= current_division;
             }
             
-            fallback_bb_target = bar_beats_target + current_division;
+            if (bar_beats_target - bar_beats_hot_node < bar_beats_mini_need){
+                bar_beats_target += current_division;
+            }
         }
     }
     
-    tmp_period_length = period_count
-                        + int((float(60.0f / current_tempo) * float(samplerate))
-                            * (bar_beats_target - bar_beats_hot_node));
-    fback_period_length = period_count
-                          + int((float(60.0f / current_tempo) * float(samplerate))
-                            * (fallback_bb_target - bar_beats_hot_node));
+    /* finally, set period properties (length, death and peak) */
+    period_length = period_count
+                    + int((float(60.0f / current_tempo) * float(samplerate))
+                          * (bar_beats_target - bar_beats_hot_node));
     
-    if (tmp_period_length < threshold_time){
-        tmp_period_length = fback_period_length;
+    if (period_count < period_death){
+        period_death = int((float(60.0f / current_tempo) * float(samplerate)) * current_max_duration);
+        period_death = MIN(period_length, period_death);
     }
-                          
-    int tmp_period_death = int((float(60.0f / current_tempo) * float(samplerate)) * current_max_duration);
-    tmp_period_death = MIN(tmp_period_length, tmp_period_death);
     
-    int tmp_period_peak = (current_attack * float(samplerate)) / 1000;
-    tmp_period_peak = MIN(tmp_period_peak, tmp_period_death - default_fade);
-    
-//     int needed_count = 0;
-//     
-//     if (period_count == 0){
-//         period_hot_node_ratio = 0.0f;
-//     } else if (period_count < period_peak){
-//         period_hot_node_ratio += float((1.0f - float(period_hot_node_ratio))
-//                                        * (float(period_count - period_hot_node_count)
-//                                           / float(period_peak - period_hot_node_count)));
-//         needed_count = int(float(1.0f - float(period_hot_node_ratio) * MIN(period_peak, default_fade) + default_fade);
-//         
-//     } else if (period_count == period_peak){
-//         period_hot_node_ratio = 1.0f;
-//         needed_count = default_fade;
-// 
-//     } else if (period_count < period_death){
-//         period_hot_node_ratio =  float(period_hot_node_ratio)
-//                                  - float(period_hot_node_ratio)
-//                                    * float(period_count - period_hot_node_count)
-//                                      / float(period_death - period_hot_node_count);
-//                                      
-//         needed_count = int(float(period_hot_node_ratio) * default_fade * 0.5f);
-//         
-//     } else {
-//         period_hot_node_ratio = 0.0f;
-//     }
-    
-    if (period_count == 0){
-        period_hot_node_ratio = 0.0f;
-        period_length = tmp_period_length;
-        period_death = tmp_period_death;
-        period_peak = tmp_period_peak;
-        
-    } else if (period_count < period_peak){
-        period_hot_node_ratio += float((1.0f - float(period_hot_node_ratio))
-                                       * (float(period_count - period_hot_node_count)
-                                          / float(period_peak - period_hot_node_count)));
-        
-        if (tmp_period_peak < int(period_count
-                                  + float(1.0f - float(period_hot_node_ratio))
-                                    * MIN(period_peak, default_fade))){
-            /* not enough time to go to peak, increase the period length */
-            bar_beats_target = fallback_bb_target;
-            period_length = fback_period_length;
-            
-            period_death = int((float(60.0f / current_tempo) * float(samplerate)) * current_max_duration);
-            period_death = MIN(period_length, period_death);
-            period_peak = (current_attack * float(samplerate)) / 1000;
-            period_peak = MIN(period_peak, period_death - default_fade);
-        } else {
-            period_length = tmp_period_length;
-            period_death = tmp_period_death;
-            period_peak = tmp_period_peak;
-        }
-        
-    } else if (period_count == period_peak){
-//         period_hot_node_ratio = 0.0f;
-        period_hot_node_ratio = 1.0f;
-        
-        if (period_count + default_fade > tmp_period_length){
-            bar_beats_target = fallback_bb_target;
-            period_length = fback_period_length;
-            period_death = int((float(60.0f / current_tempo) * float(samplerate))
-                               * current_max_duration);
-            period_death = MIN(period_length, period_death);
-        } else {
-            period_length = tmp_period_length;
-            period_death = tmp_period_death;
-        }
-        
-    } else if (period_count < period_death){
-        period_hot_node_ratio =  float(period_hot_node_ratio)
-                                 - float(period_hot_node_ratio)
-                                   * float(period_count - period_hot_node_count)
-                                     / float(period_death - period_hot_node_count);
-                                     
-        if (int(period_count + float(period_hot_node_ratio) * default_fade * 0.5f) > tmp_period_length){
-//         if (int(period_count + float(1.0f - float(period_hot_node_ratio)) * default_fade * 0.5f) > tmp_period_length){
-            /* not enough time to finish the period, increase the period length */
-            bar_beats_target = fallback_bb_target;
-            period_length = fback_period_length;
-            period_death = int((float(60.0f / current_tempo) * float(samplerate))
-                               * current_max_duration);
-            period_death = MIN(period_length, period_death);
-        } else {
-            period_length = tmp_period_length;
-            period_death = tmp_period_death;
-        }
-        
-    } else {
-        period_hot_node_ratio = 0.0f;
-        period_length = tmp_period_length;
-        period_death = tmp_period_death;
+    if (period_count < period_peak){
+        period_peak = (current_attack * float(samplerate)) / 1000;
+        period_peak = MIN(period_peak, period_death - default_fade);
     }
     
     period_hot_node_count = period_count;
@@ -1279,7 +1208,7 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
                         + speed_effect_1_value * plugin->current_speed_effect_1_vol
                         + speed_effect_2_value * plugin->current_speed_effect_2_vol;
         
-        plugin->out_test[i] = plugin->last_global_factor * 10.0f;
+//         plugin->out_test[i] = plugin->last_global_factor * 10.0f;
                         
         plugin->period_count++;
         
