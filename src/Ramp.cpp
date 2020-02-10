@@ -95,18 +95,22 @@ Ramp::Ramp(double rate){
     samplerate = rate;
     
     period_count = 0;
-    default_fade = int(0.005 * samplerate);  /*  5ms */
-    threshold_time = int(0.05 * samplerate); /* 50ms */
     period_length = default_fade;
-    ex_period_length = period_length;
     period_length_at_start = period_length;
     ex_period_length_at_start = period_length;
     period_death = period_length;
     period_peak = default_fade;
+    default_fade = int(0.005 * samplerate);  /*  5ms */
+    threshold_time = int(0.05 * samplerate); /* 50ms */
+    ex_period_length = period_length;
     period_cut = 0;
     period_audio_start = 0;
     period_last_reset = 0;
     period_random_offset = 0.00;
+    block_id = 0;
+    
+    period_hot_node_count = 0;
+    period_hot_node_ratio = 0.0f;
     
     running_step = BYPASS;
     current_mode = MODE_HOST_TRANSPORT;
@@ -116,11 +120,24 @@ Ramp::Ramp(double rate){
     waiting_enter_threshold = true;
     leave_threshold_exceeded = false;
     stop_request = false;
+    peak_in_threshold = 0.0f;
+    last_velocity = 127;
     
     current_shape = 0.0f;
     current_depth = 1.0f;
     current_volume = 1.0f;
     current_bypass_volume = 1.0f; /* used only for ramp CV, else it will stay on 1.0 */
+    
+    current_pre_start = 0;
+    current_pre_start_units = 0.25;
+    current_beat_offset = 0.0f;
+    current_division = 0.25f;
+    current_max_duration = 8.0f;
+    is_half_speed = false;
+    is_double_speed = false;
+    current_attack = 4.0f;
+    
+    current_tempo = 120.0f;
     ex_volume = 1.0f;
     ex_depth = 1.0f;
     last_global_factor = 1.0f;
@@ -131,7 +148,6 @@ Ramp::Ramp(double rate){
     current_speed_effect_1_vol = 0.0f;
     current_speed_effect_2 = 2.0f;
     current_speed_effect_2_vol = 0.0f;
-    
     has_pre_start = false;
     ternary = false;
     
@@ -148,16 +164,16 @@ Ramp::Ramp(double rate){
     beats = 0.0f;
     bar = 0;
     
+    bar_beats_period_start = 0.0;
+    bar_beats_target = 0.25;
+    bar_beats_hot_node = 0.0;
+    beat_start_ref = 0;
+    
     note_pressed = false;
     active_note = 30;
     
     restart_countdown = 0;
     waiting_restart_on_bar = false;
-    
-    bar_beats_hot_node = 0.0;
-    bar_beats_target = 0.25;
-    bar_beats_period_start = 0.0;
-    
     
     is_live_ramp = false;
     is_cv_ramp = false;
