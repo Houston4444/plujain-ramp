@@ -105,6 +105,7 @@ Ramp::Ramp(double rate){
     period_peak = default_fade;
     taken_beat_offset = 0;
     current_offset = 0;
+    ex_global_beat_offset = 0.0f;
     period_cut = 0;
     period_audio_start = 0;
     period_last_reset = 0;
@@ -157,6 +158,11 @@ Ramp::Ramp(double rate){
     
     restart_countdown = 0;
     waiting_restart_on_bar = false;
+    
+    bar_beats_hot_node = 0.0;
+    bar_beats_target = 0.25;
+    bar_beats_period_start = 0.0;
+    
     
     is_live_ramp = false;
     is_cv_ramp = false;
@@ -567,12 +573,12 @@ void Ramp::set_period_properties(bool hot=false)
                 while (bar_beats_target <= bar_beats_hot_node){
                     bar_beats_target += base_time;
                 }
-                
-                while(bar_beats_target - bar_beats_hot_node > double(base_time) * 4/double(3)){
+                while(bar_beats_target - bar_beats_hot_node > double(base_time)){
                     bar_beats_target -= base_time;
                 }
                 
-                if (bar_beats_target - bar_beats_hot_node < bar_beats_mini_need){
+                if (bar_beats_target - bar_beats_hot_node < bar_beats_mini_need
+                        or bar_beats_target - bar_beats_period_start < base_time / double(3)){
                     bar_beats_target += base_time / double(3);
                 }
                 
@@ -583,11 +589,12 @@ void Ramp::set_period_properties(bool hot=false)
                     bar_beats_target += base_time;
                 }
                 
-                while(bar_beats_target - bar_beats_hot_node > base_time/double(3)){
+                while(bar_beats_target - bar_beats_hot_node > base_time){
                     bar_beats_target -= base_time;
                 }
                 
-                if (bar_beats_target - bar_beats_hot_node < bar_beats_mini_need){
+                if (bar_beats_target - bar_beats_hot_node < bar_beats_mini_need
+                     or bar_beats_target - bar_beats_period_start < base_time / double(6)){
                     bar_beats_target += base_time * 2/double(3);
                 }
             }
@@ -611,8 +618,8 @@ void Ramp::set_period_properties(bool hot=false)
                 bar_beats_target -= current_division;
             }
             
-            if (bb_offset + period_random_offset > ex_global_beat_offset
-                    or bar_beats_target - bar_beats_hot_node < bar_beats_mini_need){
+            if (bar_beats_target - bar_beats_hot_node < bar_beats_mini_need
+                or bar_beats_target - bar_beats_period_start < current_division / 2.0){
                 bar_beats_target += current_division;
             }
         }
@@ -667,6 +674,7 @@ void Ramp::start_period()
     taken_beat_offset = current_offset;
     
     bar_beats_hot_node = bar_beats_target;
+    bar_beats_period_start = bar_beats_hot_node;
     ex_global_beat_offset = period_random_offset + 0.125 * current_beat_offset;
     period_random_offset = 0.125 * (2.0f * float(rand() / (RAND_MAX + 1.)) - 1.0f) * RAIL(*random_offset, 0, 1);
     
