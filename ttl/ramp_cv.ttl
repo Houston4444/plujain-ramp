@@ -271,14 +271,12 @@ lv2:port
 [
     a lv2:ControlPort, lv2:InputPort;
     lv2:index 17;
-    lv2:symbol "volume";
-    lv2:name "Volume",
-        "Volume"@fr ;
-    units:unit units:db ;
-    lv2:scalePoint [rdfs:label "Mute"; rdf:value -80];
+    lv2:symbol "voltage";
+    lv2:name "Voltage",
+        "Voltage"@fr ;
     lv2:default 0;
-    lv2:minimum -80;
-    lv2:maximum 12;
+    lv2:minimum 0;
+    lv2:maximum 10;
     lv2pg:group ramp_lv2:G104_GS;
 ].
 

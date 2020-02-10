@@ -32,7 +32,7 @@ void CvRamp::connect_port(LV2_Handle instance, uint32_t port, void *data)
 
     enum {IN, CTRL_IN, OUT, ACTIVE, PRE_START, PRE_START_UNITS, BEAT_OFFSET, RANDOM_OFFSET,
           HOST_TEMPO, DIVISION, MAX_DURATION, HALF_SPEED, DOUBLE_SPEED,
-          ATTACK, SHAPE, RANDOM_SHAPE, DEPTH, VOLUME, PLUGIN_PORT_COUNT};
+          ATTACK, SHAPE, RANDOM_SHAPE, DEPTH, VOLTAGE, PLUGIN_PORT_COUNT};
 
     switch (port)
     {
@@ -87,8 +87,8 @@ void CvRamp::connect_port(LV2_Handle instance, uint32_t port, void *data)
         case DEPTH:
             plugin->depth = (float*) data;
             break;
-        case VOLUME:
-            plugin->volume = (float*) data;
+        case VOLTAGE:
+            plugin->voltage = (float*) data;
             break;
     }
 }

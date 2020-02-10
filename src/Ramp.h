@@ -106,11 +106,11 @@ public:
     float *random_shape;
     float *depth;
     float *volume;
+    float *voltage; /* used for CV ramp instead of volume */
     float *speed_effect_1;
     float *speed_effect_1_vol;
     float *speed_effect_2;
     float *speed_effect_2_vol;
-    float *out_test;
     double samplerate;
     
     float audio_memory[960000];

@@ -670,9 +670,13 @@ void Ramp::start_period()
     }
     
     ex_volume = current_volume;
-    current_volume = powf(10.0f, (*volume)/20.0f);
-    if (*volume <= -80.0f){
-        current_volume = 0;
+    if (is_cv_ramp){
+        current_volume = *voltage / 10.0f;
+    } else {
+        current_volume = powf(10.0f, (*volume)/20.0f);
+        if (*volume <= -80.0f){
+            current_volume = 0;
+        }
     }
     
     if (running_step == WAITING_SIGNAL){
