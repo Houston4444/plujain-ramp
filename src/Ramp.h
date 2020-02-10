@@ -73,6 +73,8 @@ public:
     virtual float get_enter_threshold();
     virtual float get_leave_threshold();
     virtual uint8_t get_midi_note();
+    virtual float get_volume_factor();
+    virtual float get_inactive_volume_factor();
     float get_shut_octave_factor();
     float get_octave_image_value(float speed, bool leaving);
     float get_effect_up_octave_value();
@@ -106,7 +108,7 @@ public:
     float *random_shape;
     float *depth;
     float *volume;
-    float *voltage; /* used for CV ramp instead of volume */
+//     float *voltage; /* used for CV ramp instead of volume */
     float *speed_effect_1;
     float *speed_effect_1_vol;
     float *speed_effect_2;
@@ -155,6 +157,7 @@ public:
     float current_shape;
     float current_depth;
     float current_volume;
+    float current_bypass_volume;
     
     uint8_t current_pre_start;
     float current_pre_start_units;

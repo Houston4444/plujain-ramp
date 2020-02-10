@@ -81,8 +81,18 @@ lv2:port
     lv2:designation lv2:enabled ;
 ],
 [
+    a lv2:ControlPort, lv2:InputPort;
+    lv2:index 4;
+    lv2:symbol "inactive_voltage";
+    lv2:name "Inactive Voltage",
+        "Voltage inactif"@fr ;
+    lv2:default 10;
+    lv2:minimum 0;
+    lv2:maximum 10;
+],
+[
     a lv2:InputPort, lv2:ControlPort ;
-    lv2:index 4 ;
+    lv2:index 5;
     lv2:symbol "pre_start" ;
     lv2:name "Pre Start",
         "Pré-démarrage"@fr;
@@ -94,7 +104,7 @@ lv2:port
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 5;
+    lv2:index 6;
     lv2:symbol "pre_start_units";
     lv2:name "Pre Start Units",
         "Unités du Pré-démarrage"@fr ;
@@ -113,7 +123,7 @@ lv2:port
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 6;
+    lv2:index 7;
     lv2:symbol "beat_offset";
     lv2:name "Beat Offset",
         "Placement"@fr ;
@@ -124,7 +134,7 @@ lv2:port
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 7;
+    lv2:index 8;
     lv2:symbol "random_beat_offset";
     lv2:name "Random Beat Offset",
         "Placement aléatoire"@fr ;
@@ -136,7 +146,7 @@ lv2:port
 [
     a lv2:InputPort ;
     a lv2:ControlPort ;
-    lv2:index 8;
+    lv2:index 9;
     lv2:symbol "bpm_host" ;
     lv2:name "Host BPM" ;
     lv2:portProperty epp:hasStrictBounds ;
@@ -150,7 +160,7 @@ lv2:port
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 9;
+    lv2:index 10;
     lv2:symbol "division";
     lv2:name "Division",
         "Division"@fr ;
@@ -178,7 +188,7 @@ lv2:port
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 10;
+    lv2:index 11;
     lv2:symbol "max_duration";
     lv2:name "Max Duration",
         "Durée Maximale"@fr ;
@@ -198,7 +208,7 @@ lv2:port
 ],
 [
     a lv2:InputPort, lv2:ControlPort ;
-    lv2:index 11;
+    lv2:index 12;
     lv2:symbol "half_speed" ;
     lv2:name "Half Speed",
         "Demi Vitesse"@fr ;
@@ -211,7 +221,7 @@ lv2:port
 ],
 [
     a lv2:InputPort, lv2:ControlPort ;
-    lv2:index 12;
+    lv2:index 13;
     lv2:symbol "double_speed";
     lv2:name "Double Speed",
         "Double Vitesse"@fr ;
@@ -225,7 +235,7 @@ lv2:port
 
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 13;
+    lv2:index 14;
     lv2:symbol "attack";
     lv2:name "Attack",
         "Attaque"@fr ;
@@ -237,7 +247,7 @@ lv2:port
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 14;
+    lv2:index 15;
     lv2:symbol "shape";
     lv2:name "Shape",
         "Forme"@fr ;
@@ -248,7 +258,7 @@ lv2:port
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 15;
+    lv2:index 16;
     lv2:symbol "random_shape";
     lv2:name "Random Shape",
         "Forme aléatoire"@fr ;
@@ -259,7 +269,7 @@ lv2:port
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 16;
+    lv2:index 17;
     lv2:symbol "depth";
     lv2:name "Depth",
         "Profondeur"@fr ;
@@ -270,11 +280,11 @@ lv2:port
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 17;
+    lv2:index 18;
     lv2:symbol "voltage";
     lv2:name "Voltage",
         "Voltage"@fr ;
-    lv2:default 0;
+    lv2:default 10;
     lv2:minimum 0;
     lv2:maximum 10;
     lv2pg:group ramp_lv2:G104_GS;
@@ -297,3 +307,4 @@ ramp_lv2:G104_GS
     lv2:name "Global Shape",
         "Forme Globale"@fr;
     lv2:symbol "global_shape" .
+

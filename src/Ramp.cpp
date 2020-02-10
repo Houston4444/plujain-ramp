@@ -122,6 +122,7 @@ Ramp::Ramp(double rate){
     current_shape = 0.0f;
     current_depth = 1.0f;
     current_volume = 1.0f;
+    current_bypass_volume = 1.0f; /* used only for ramp CV, else it will stay on 1.0 */
     ex_volume = 1.0f;
     ex_depth = 1.0f;
     last_global_factor = 1.0f;
@@ -358,6 +359,19 @@ void Ramp::set_running_step(uint32_t step)
     set_running_step(step, 0);
 }
 
+float Ramp::get_volume_factor()
+{
+    if (*volume <= -80.0f){
+        return 0.0f;
+    }
+    
+    return powf(10.0f, (*volume)/20.0f);
+}
+
+float Ramp::get_inactive_volume_factor()
+{
+    return 1.0f;
+}
 
 float Ramp::get_tempo()
 {
@@ -651,6 +665,8 @@ void Ramp::start_period()
     period_count = 0;
     taken_beat_offset = current_offset;
     
+    
+    
     bar_beats_hot_node = bar_beats_target;
     period_random_offset = 0.125 * (2.0f * float(rand() / (RAND_MAX + 1.)) - 1.0f) * RAIL(*random_offset, 0, 1);
     
@@ -670,21 +686,16 @@ void Ramp::start_period()
     }
     
     ex_volume = current_volume;
-    if (is_cv_ramp){
-        current_volume = *voltage / 10.0f;
-    } else {
-        current_volume = powf(10.0f, (*volume)/20.0f);
-        if (*volume <= -80.0f){
-            current_volume = 0;
-        }
-    }
+    current_volume = get_volume_factor();
     
     if (running_step == WAITING_SIGNAL){
         ex_depth = current_depth;
         current_depth = RAIL(*depth, 0, 1);
     }
     
-    if (not is_cv_ramp){
+    if (is_cv_ramp){
+        current_bypass_volume = get_inactive_volume_factor();
+    } else {
         current_speed_effect_1 = float(*speed_effect_1);
         current_speed_effect_1_vol = powf(10.0f, (*speed_effect_1_vol)/20.0f);
         current_speed_effect_2 = float(*speed_effect_2);
@@ -746,11 +757,6 @@ float Ramp::get_fall_period_factor()
                               + float(period_hot_node_ratio)
                                 * (float(period_count - period_hot_node_count)
                                    / (float(period_death - period_hot_node_count)) );
-    
-//     float period_fall_ratio = float(period_hot_node_ratio)
-//                               + (1.0f - float(period_hot_node_ratio))
-//                                 * (float(period_count - period_hot_node_count)
-//                                    / (float(period_death - period_hot_node_count)) );
     
     float pre_factor = 1.0f - float(period_fall_ratio);
     float shape = current_shape;
@@ -1043,7 +1049,7 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
         switch(plugin->running_step)
         {
             case BYPASS:
-                v = 1.0f;
+                v = plugin->current_bypass_volume;
                 d = 0.0f;
                 break;
                 
@@ -1195,7 +1201,7 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
                 v = 1;
                 d = 1;
                 period_factor = plugin->last_global_factor_mem
-                                + (1 - plugin->last_global_factor_mem)
+                                + (plugin->current_bypass_volume - plugin->last_global_factor_mem)
                                   * plugin->period_count/float(plugin->default_fade);
                 
                 oct_period_factor = plugin->oct_period_factor_mem

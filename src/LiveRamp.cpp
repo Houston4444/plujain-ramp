@@ -185,6 +185,20 @@ float LiveRamp::get_tempo()
     return tempo_now;
 } 
 
+float LiveRamp::get_volume_factor()
+{
+    if (*volume <= -80.0f){
+        return 0.0f;
+    }
+    
+    return powf(10.0f, (*volume)/20.0f);
+}
+
+float LiveRamp::get_inactive_volume_factor()
+{
+    return 1.0f;
+}
+
 void LiveRamp::connect_port(LV2_Handle instance, uint32_t port, void *data)
 {
     LiveRamp *plugin;

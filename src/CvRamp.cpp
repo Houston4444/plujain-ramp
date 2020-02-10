@@ -25,12 +25,23 @@ CvRamp::CvRamp(double rate) : Ramp(rate){
     is_cv_ramp = true;
 }
 
+float CvRamp::get_volume_factor()
+{
+    return *voltage / 10.0f;
+}
+
+float CvRamp::get_inactive_volume_factor()
+{
+    return *inactive_voltage / 10.0f;
+}
+
+
 void CvRamp::connect_port(LV2_Handle instance, uint32_t port, void *data)
 {
     CvRamp *plugin;
     plugin = (CvRamp *) instance;
 
-    enum {IN, CTRL_IN, OUT, ACTIVE, PRE_START, PRE_START_UNITS, BEAT_OFFSET, RANDOM_OFFSET,
+    enum {IN, CTRL_IN, OUT, ACTIVE, INACTIVE_VOLTAGE, PRE_START, PRE_START_UNITS, BEAT_OFFSET, RANDOM_OFFSET,
           HOST_TEMPO, DIVISION, MAX_DURATION, HALF_SPEED, DOUBLE_SPEED,
           ATTACK, SHAPE, RANDOM_SHAPE, DEPTH, VOLTAGE, PLUGIN_PORT_COUNT};
 
@@ -47,6 +58,9 @@ void CvRamp::connect_port(LV2_Handle instance, uint32_t port, void *data)
             break;
         case ACTIVE:
             plugin->active = (float*) data;
+            break;
+        case INACTIVE_VOLTAGE:
+            plugin->inactive_voltage = (float*) data;
             break;
         case PRE_START:
             plugin->pre_start = (float*) data;

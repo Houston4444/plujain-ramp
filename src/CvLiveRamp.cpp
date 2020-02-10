@@ -27,6 +27,16 @@ map_mem_uris (LV2_URID_Map* map, PluginURIs* uris)
 CvLiveRamp::CvLiveRamp(double rate) : LiveRamp(rate){
     is_cv_ramp = true;
 }
+
+float CvLiveRamp::get_volume_factor()
+{
+    return *voltage / 10.0f;
+}
+
+float CvLiveRamp::get_inactive_volume_factor()
+{
+    return *inactive_voltage / 10.0f;
+}
     
 void CvLiveRamp::connect_port(LV2_Handle instance, uint32_t port, void *data)
 {
@@ -34,10 +44,10 @@ void CvLiveRamp::connect_port(LV2_Handle instance, uint32_t port, void *data)
     plugin = (CvLiveRamp *) instance;
     
     enum {IN, MIDI_IN, OUT, MIDI_OUT,
-      ACTIVE, MODE, ENTER_THRESHOLD, LEAVE_THRESHOLD,
+      ACTIVE, INACTIVE_VOLTAGE, MODE, ENTER_THRESHOLD, LEAVE_THRESHOLD,
       PRE_START, PRE_START_UNITS, BEAT_OFFSET, RANDOM_OFFSET,
       SYNC_BPM, HOST_TEMPO, TEMPO, DIVISION, MAX_DURATION, HALF_SPEED, DOUBLE_SPEED,
-      ATTACK, SHAPE, RANDOM_SHAPE, DEPTH, VOLUME,
+      ATTACK, SHAPE, RANDOM_SHAPE, DEPTH, VOLTAGE,
       MIDI_NOTE, MIDI_VELOCITY_MIN, MIDI_VELOCITY_MAX, MIDI_INERTIA, PLUGIN_PORT_COUNT};
 
     switch (port)
@@ -56,6 +66,9 @@ void CvLiveRamp::connect_port(LV2_Handle instance, uint32_t port, void *data)
             break;
         case ACTIVE:
             plugin->active = (float*) data;
+            break;
+        case INACTIVE_VOLTAGE:
+            plugin->inactive_voltage = (float*) data;
             break;
         case MODE:
             plugin->mode = (float*) data;
@@ -111,8 +124,8 @@ void CvLiveRamp::connect_port(LV2_Handle instance, uint32_t port, void *data)
         case DEPTH:
             plugin->depth = (float*) data;
             break;
-        case VOLUME:
-            plugin->volume = (float*) data;
+        case VOLTAGE:
+            plugin->voltage = (float*) data;
             break;
         case MIDI_NOTE:
             plugin->midi_note = (float*) data;

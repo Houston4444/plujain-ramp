@@ -16,6 +16,8 @@ public:
     float get_enter_threshold();
     float get_leave_threshold();
     uint8_t get_midi_note();
+    virtual float get_volume_factor();
+    virtual float get_inactive_volume_factor();
     void send_midi_start_stop(bool start, uint32_t frame);
     void send_midi_note(uint32_t frame);
     void send_midi_note_off(uint32_t frame);
