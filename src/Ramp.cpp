@@ -611,7 +611,8 @@ void Ramp::set_period_properties(bool hot=false)
                 bar_beats_target -= current_division;
             }
             
-            if (bar_beats_target - bar_beats_hot_node < bar_beats_mini_need){
+            if (bb_offset + period_random_offset > ex_global_beat_offset
+                    or bar_beats_target - bar_beats_hot_node < bar_beats_mini_need){
                 bar_beats_target += current_division;
             }
         }
@@ -665,9 +666,8 @@ void Ramp::start_period()
     period_count = 0;
     taken_beat_offset = current_offset;
     
-    
-    
     bar_beats_hot_node = bar_beats_target;
+    ex_global_beat_offset = period_random_offset + 0.125 * current_beat_offset;
     period_random_offset = 0.125 * (2.0f * float(rand() / (RAND_MAX + 1.)) - 1.0f) * RAIL(*random_offset, 0, 1);
     
     if (n_period == 0){

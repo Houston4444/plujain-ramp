@@ -138,6 +138,7 @@ public:
     int period_hot_change_count;
     bool period_hot_modified;
     double period_random_offset;
+    double ex_global_beat_offset;
     uint32_t block_id;
     
     int period_hot_node_count;
