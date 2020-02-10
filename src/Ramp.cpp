@@ -103,9 +103,6 @@ Ramp::Ramp(double rate){
     ex_period_length_at_start = period_length;
     period_death = period_length;
     period_peak = default_fade;
-    taken_beat_offset = 0;
-    current_offset = 0;
-    ex_global_beat_offset = 0.0f;
     period_cut = 0;
     period_audio_start = 0;
     period_last_reset = 0;
@@ -136,9 +133,7 @@ Ramp::Ramp(double rate){
     current_speed_effect_2_vol = 0.0f;
     
     has_pre_start = false;
-    n_period = 1;
     ternary = false;
-    taken_by_groove = 0;
     
     instance_started_since = 0;
     start_sent_after_start = false;
@@ -340,8 +335,6 @@ void Ramp::set_running_step(uint32_t step, uint32_t frame)
         case WAITING_SIGNAL:
             break;
         case FIRST_PERIOD:
-            n_period = 1;
-            current_offset = 0;
             start_period();
             current_shape = RAIL(*shape, -4, 4);
             current_depth = RAIL(*depth, 0, 1);
@@ -350,7 +343,6 @@ void Ramp::set_running_step(uint32_t step, uint32_t frame)
             waiting_enter_threshold = false;
             break;
         case EFFECT:
-            taken_beat_offset = 0;
             break;
         case OUTING:
             waiting_enter_threshold = false;
@@ -430,7 +422,7 @@ float Ramp::get_division()
     return 0.25;
 }
 
-void Ramp::set_period_properties(bool hot=false)
+void Ramp::set_period_properties()
 {
     if (running_step == FIRST_PERIOD or running_step == EFFECT){
         ;
@@ -606,7 +598,7 @@ void Ramp::set_period_properties(bool hot=false)
                                 + bb_offset
                                 + period_random_offset;
             
-            if (hot and current_division > 1.00){
+            if (current_division > 1.00){
                 bar_beats_target += fmod(beat_start_ref, current_division);
             }
 
@@ -644,21 +636,7 @@ void Ramp::set_period_properties(bool hot=false)
     period_hot_node_count = period_count;
 }
     
-void Ramp::set_period_death()
-{
-    float tempo_now = get_tempo();
     
-    int tmp_duration = int(
-        (float(60.0f / tempo_now) * float(samplerate)) * *max_duration);
-    
-    if (tmp_duration > period_length){
-        tmp_duration = period_length;
-    }
-    
-    period_death = tmp_duration;
-}
-
-
 void Ramp::start_period()
 {
     ex_period_length = period_length;
@@ -671,18 +649,10 @@ void Ramp::start_period()
     
     period_cut = period_count;
     period_count = 0;
-    taken_beat_offset = current_offset;
     
     bar_beats_hot_node = bar_beats_target;
     bar_beats_period_start = bar_beats_hot_node;
-    ex_global_beat_offset = period_random_offset + 0.125 * current_beat_offset;
     period_random_offset = 0.125 * (2.0f * float(rand() / (RAND_MAX + 1.)) - 1.0f) * RAIL(*random_offset, 0, 1);
-    
-    if (n_period == 0){
-        n_period = 1;
-    } else {
-        n_period = 0;
-    }
     
     current_tempo = get_tempo();
     set_period_properties();
@@ -712,21 +682,6 @@ void Ramp::start_period()
 }
 
 
-void Ramp::start_first_period(uint32_t frame)
-{
-    n_period = 1;
-    current_offset = 0;
-    start_period();
-    current_shape = RAIL(*shape, -4, 4);
-    current_depth = RAIL(*depth, 0, 1);
-    
-    has_pre_start = bool(*pre_start > 0.5f);
-    
-    send_midi_start_stop(true, frame);
-    
-    waiting_enter_threshold = false;
-}
-
 void Ramp::set_shape()
 {
     current_shape = float(*shape);
@@ -747,11 +702,6 @@ void Ramp::set_shape()
     } else if (n_max < 4){
         current_shape *= 0.75f;
     }
-}
-
-void Ramp::set_period_length_hot()
-{
-    set_period_properties(true);
 }
 
 float Ramp::get_fall_period_factor()
@@ -1050,7 +1000,7 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
         
         if (hot_change_sample == int(i)){
             if (not bool(plugin->period_count == 0 or plugin->period_count == plugin->period_peak)){
-                plugin->set_period_length_hot();
+                plugin->set_period_properties();
             }
         }
         
