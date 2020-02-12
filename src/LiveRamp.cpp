@@ -210,6 +210,7 @@ void LiveRamp::connect_port(LV2_Handle instance, uint32_t port, void *data)
       SYNC_BPM, HOST_TEMPO, TEMPO, DIVISION, MAX_DURATION, HALF_SPEED, DOUBLE_SPEED,
       ATTACK, SHAPE, RANDOM_SHAPE, DEPTH, VOLUME,
       SPEED_EFFECT_1, SPEED_EFFECT_1_VOL, SPEED_EFFECT_2, SPEED_EFFECT_2_VOL,
+      SEQUENCE_LENGTH, SEQUENCE_BEGINNING, SEQUENCE_END, OUT_OF_SEQUENCE,
       MIDI_NOTE, MIDI_VELOCITY_MIN, MIDI_VELOCITY_MAX, MIDI_INERTIA, PLUGIN_PORT_COUNT};
 
     switch (port)
@@ -297,6 +298,18 @@ void LiveRamp::connect_port(LV2_Handle instance, uint32_t port, void *data)
             break;
         case SPEED_EFFECT_2_VOL:
             plugin->speed_effect_2_vol = (float*) data;
+            break;
+        case SEQUENCE_LENGTH:
+            plugin->sequence_length = (float*) data;
+            break;
+        case SEQUENCE_BEGINNING:
+            plugin->sequence_beginning = (float*) data;
+            break;
+        case SEQUENCE_END:
+            plugin->sequence_end = (float*) data;
+            break;
+        case OUT_OF_SEQUENCE:
+            plugin->out_of_sequence = (float*) data;
             break;
         case MIDI_NOTE:
             plugin->midi_note = (float*) data;

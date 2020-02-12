@@ -41,9 +41,10 @@ void CvRamp::connect_port(LV2_Handle instance, uint32_t port, void *data)
     CvRamp *plugin;
     plugin = (CvRamp *) instance;
 
-    enum {IN, CTRL_IN, OUT, ACTIVE, INACTIVE_VOLTAGE, PRE_START, PRE_START_UNITS, BEAT_OFFSET, RANDOM_OFFSET,
+    enum {IN, CTRL_IN, CV_OUT, ACTIVE, INACTIVE_VOLTAGE, PRE_START, PRE_START_UNITS, BEAT_OFFSET, RANDOM_OFFSET,
           HOST_TEMPO, DIVISION, MAX_DURATION, HALF_SPEED, DOUBLE_SPEED,
-          ATTACK, SHAPE, RANDOM_SHAPE, DEPTH, VOLTAGE, PLUGIN_PORT_COUNT};
+          ATTACK, SHAPE, RANDOM_SHAPE, DEPTH, VOLTAGE,
+          SEQUENCE_LENGTH, SEQUENCE_BEGINNING, SEQUENCE_END, OUT_OF_SEQUENCE, PLUGIN_PORT_COUNT};
 
     switch (port)
     {
@@ -53,7 +54,7 @@ void CvRamp::connect_port(LV2_Handle instance, uint32_t port, void *data)
         case CTRL_IN:
             plugin->midi_in = (const LV2_Atom_Sequence*) data;
             break;
-        case OUT:
+        case CV_OUT:
             plugin->out = (float*) data;
             break;
         case ACTIVE:
@@ -103,6 +104,18 @@ void CvRamp::connect_port(LV2_Handle instance, uint32_t port, void *data)
             break;
         case VOLTAGE:
             plugin->voltage = (float*) data;
+            break;
+        case SEQUENCE_LENGTH:
+            plugin->sequence_length = (float*) data;
+            break;
+        case SEQUENCE_BEGINNING:
+            plugin->sequence_beginning = (float*) data;
+            break;
+        case SEQUENCE_END:
+            plugin->sequence_end = (float*) data;
+            break;
+        case OUT_OF_SEQUENCE:
+            plugin->out_of_sequence = (float*) data;
             break;
     }
 }

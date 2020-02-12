@@ -43,11 +43,12 @@ void CvLiveRamp::connect_port(LV2_Handle instance, uint32_t port, void *data)
     CvLiveRamp *plugin;
     plugin = (CvLiveRamp *) instance;
     
-    enum {IN, MIDI_IN, OUT, MIDI_OUT,
+    enum {IN, MIDI_IN, CV_OUT, MIDI_OUT,
       ACTIVE, INACTIVE_VOLTAGE, MODE, ENTER_THRESHOLD, LEAVE_THRESHOLD,
       PRE_START, PRE_START_UNITS, BEAT_OFFSET, RANDOM_OFFSET,
       SYNC_BPM, HOST_TEMPO, TEMPO, DIVISION, MAX_DURATION, HALF_SPEED, DOUBLE_SPEED,
       ATTACK, SHAPE, RANDOM_SHAPE, DEPTH, VOLTAGE,
+      SEQUENCE_LENGTH, SEQUENCE_BEGINNING, SEQUENCE_END, OUT_OF_SEQUENCE,
       MIDI_NOTE, MIDI_VELOCITY_MIN, MIDI_VELOCITY_MAX, MIDI_INERTIA, PLUGIN_PORT_COUNT};
 
     switch (port)
@@ -58,7 +59,7 @@ void CvLiveRamp::connect_port(LV2_Handle instance, uint32_t port, void *data)
         case MIDI_IN:
             plugin->midi_in = (const LV2_Atom_Sequence*) data;
             break;
-        case OUT:
+        case CV_OUT:
             plugin->out = (float*) data;
             break;
         case MIDI_OUT:
@@ -126,6 +127,18 @@ void CvLiveRamp::connect_port(LV2_Handle instance, uint32_t port, void *data)
             break;
         case VOLTAGE:
             plugin->voltage = (float*) data;
+            break;
+        case SEQUENCE_LENGTH:
+            plugin->sequence_length = (float*) data;
+            break;
+        case SEQUENCE_BEGINNING:
+            plugin->sequence_beginning = (float*) data;
+            break;
+        case SEQUENCE_END:
+            plugin->sequence_end = (float*) data;
+            break;
+        case OUT_OF_SEQUENCE:
+            plugin->out_of_sequence = (float*) data;
             break;
         case MIDI_NOTE:
             plugin->midi_note = (float*) data;

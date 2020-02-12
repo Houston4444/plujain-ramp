@@ -60,6 +60,7 @@ public:
     void set_shape();
     void set_period_properties();
     float get_fall_period_factor();
+    void set_sequence();
     virtual void send_midi_start_stop(bool start);
     virtual void send_midi_start_stop(bool start, uint32_t frame);
     virtual void send_midi_note(uint32_t frame);
@@ -108,6 +109,10 @@ public:
     float *speed_effect_1_vol;
     float *speed_effect_2;
     float *speed_effect_2_vol;
+    float *sequence_length;
+    float *sequence_beginning;
+    float *sequence_end;
+    float *out_of_sequence;
     double samplerate;
     
     float audio_memory[960000];
@@ -125,7 +130,13 @@ public:
     int period_audio_start;
     int period_last_reset;
     double period_random_offset;
-    uint32_t block_id;
+    
+    float current_seq_len;
+    float current_seq_begin;
+    float current_seq_end;
+    float current_seq_out_mode;
+    bool period_muted;
+    uint8_t period_seq_speeded;
     
     int period_hot_node_count;
     float period_hot_node_ratio;

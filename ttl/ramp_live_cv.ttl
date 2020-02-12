@@ -64,7 +64,7 @@ lv2:port
     lv2:name "Midi In";
 ],
 [
-    a lv2:AudioPort, lv2:OutputPort;
+    a lv2:CVPort, lv2:OutputPort;
     lv2:index 2;
     lv2:symbol "Out";
     lv2:name "Out";
@@ -369,6 +369,59 @@ lv2:port
 [
     a lv2:ControlPort, lv2:InputPort;
     lv2:index 25;
+    lv2:symbol "sequence_length";
+    lv2:name "Sequence Length",
+        "Durée de la sequence"@fr ;
+    lv2:default 4;
+    lv2:minimum 0;
+    lv2:maximum 32;
+    units:unit units:beat ;
+    lv2:portProperty lv2:integer ;
+    lv2pg:group ramp_live_lv2:G106_SQ;
+],
+[
+    a lv2:ControlPort, lv2:InputPort;
+    lv2:index 26;
+    lv2:symbol "sequence_begin";
+    lv2:name "Sequence Beginning",
+        "Début de la sequence"@fr ;
+    lv2:default 0.0;
+    lv2:minimum 0.0;
+    lv2:maximum 32.0;
+    units:unit units:beat ;
+    lv2pg:group ramp_live_lv2:G106_SQ;
+],
+[
+    a lv2:ControlPort, lv2:InputPort;
+    lv2:index 27;
+    lv2:symbol "sequence_end";
+    lv2:name "Sequence End",
+        "Fin de la sequence"@fr ;
+    lv2:default 4.0;
+    lv2:minimum 0.0;
+    lv2:maximum 32.0;
+    units:unit units:beat ;
+    lv2pg:group ramp_live_lv2:G106_SQ;
+],
+[
+    a lv2:ControlPort, lv2:InputPort;
+    lv2:index 28;
+    lv2:symbol "out_of_sequence";
+    lv2:name "Out of Sequence",
+        "Hors sequence"@fr ;
+    lv2:portProperty lv2:integer;
+    lv2:portProperty lv2:enumeration ;
+        lv2:scalePoint [rdfs:label "bottom of the depth", "Fond de la profondeur"@fr; rdf:value 0];
+        lv2:scalePoint [rdfs:label "half speed", "Demi vitesse"@fr; rdf:value 1];
+        lv2:scalePoint [rdfs:label "double speed", "Double vitesse"@fr; rdf:value 2];
+    lv2:default 0;
+    lv2:minimum 0;
+    lv2:maximum 2;
+    lv2pg:group ramp_live_lv2:G106_SQ;
+],
+[
+    a lv2:ControlPort, lv2:InputPort;
+    lv2:index 29;
     lv2:symbol "midi_note";
     lv2:name "MIDI Note",
         "Note MIDI"@fr;
@@ -376,11 +429,11 @@ lv2:port
     lv2:default 36;
     lv2:minimum 0;
     lv2:maximum 127;
-    lv2pg:group ramp_live_lv2:G106_MIDI;
+    lv2pg:group ramp_live_lv2:G107_MIDI;
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 26;
+    lv2:index 30;
     lv2:symbol "midi_velocity_min";
     lv2:name "MIDI Velocity Minimum",
         "Velocité MIDI Minimum"@fr;
@@ -388,11 +441,11 @@ lv2:port
     lv2:default -70;
     lv2:minimum -80;
     lv2:maximum 0;
-    lv2pg:group ramp_live_lv2:G106_MIDI;
+    lv2pg:group ramp_live_lv2:G107_MIDI;
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 27;
+    lv2:index 31;
     lv2:symbol "midi_velocity_max";
     lv2:name "MIDI Velocity Maximum",
         "Vélocité MIDI Maximum"@fr;
@@ -400,18 +453,18 @@ lv2:port
     lv2:default -6;
     lv2:minimum -80;
     lv2:maximum +20;
-    lv2pg:group ramp_live_lv2:G106_MIDI;
+    lv2pg:group ramp_live_lv2:G107_MIDI;
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
-    lv2:index 28;
+    lv2:index 32;
     lv2:symbol "midi_inertia";
     lv2:name "MIDI Inertia",
         "Inertie MIDI"@fr;
     lv2:default 0;
     lv2:minimum 0;
     lv2:maximum 0.99;
-    lv2pg:group ramp_live_lv2:G106_MIDI;
+    lv2pg:group ramp_live_lv2:G107_MIDI;
 ].
 
 ramp_live_lv2:G101_AM
@@ -437,11 +490,18 @@ ramp_live_lv2:G104_GS
     lv2:name "Global Shape",
         "Forme Globale"@fr;
     lv2:symbol "global_shape" .
+
+ramp_live_lv2:G106_SQ
+    a lv2pg:InputGroup;
+    lv2:name "Sequence",
+        "Sequence"@fr;
+    lv2:symbol "sequence" .
     
-ramp_live_lv2:G106_MIDI
+ramp_live_lv2:G107_MIDI
     a lv2pg:InputGroup;
     lv2:name "Midi Note",
         "Note Midi"@fr;
     lv2:symbol "midi_note_gp" .
     
+
 

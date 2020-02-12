@@ -288,6 +288,59 @@ lv2:port
     lv2:minimum 0;
     lv2:maximum 10;
     lv2pg:group ramp_lv2:G104_GS;
+],
+[
+    a lv2:ControlPort, lv2:InputPort;
+    lv2:index 19;
+    lv2:symbol "sequence_length";
+    lv2:name "Sequence Length",
+        "Durée de la sequence"@fr ;
+    lv2:default 4;
+    lv2:minimum 0;
+    lv2:maximum 32;
+    units:unit units:beat ;
+    lv2:portProperty lv2:integer ;
+    lv2pg:group ramp_lv2:G106_SQ;
+],
+[
+    a lv2:ControlPort, lv2:InputPort;
+    lv2:index 20;
+    lv2:symbol "sequence_begin";
+    lv2:name "Sequence Beginning",
+        "Début de la sequence"@fr ;
+    lv2:default 0.0;
+    lv2:minimum 0.0;
+    lv2:maximum 32.0;
+    units:unit units:beat ;
+    lv2pg:group ramp_lv2:G106_SQ;
+],
+[
+    a lv2:ControlPort, lv2:InputPort;
+    lv2:index 21;
+    lv2:symbol "sequence_end";
+    lv2:name "Sequence End",
+        "Fin de la sequence"@fr ;
+    lv2:default 4.0;
+    lv2:minimum 0.0;
+    lv2:maximum 32.0;
+    units:unit units:beat ;
+    lv2pg:group ramp_lv2:G106_SQ;
+],
+[
+    a lv2:ControlPort, lv2:InputPort;
+    lv2:index 22;
+    lv2:symbol "out_of_sequence";
+    lv2:name "Out of Sequence",
+        "Hors sequence"@fr ;
+    lv2:portProperty lv2:integer;
+    lv2:portProperty lv2:enumeration ;
+        lv2:scalePoint [rdfs:label "bottom of the depth", "Fond de la profondeur"@fr; rdf:value 0];
+        lv2:scalePoint [rdfs:label "half speed", "Demi vitesse"@fr; rdf:value 1];
+        lv2:scalePoint [rdfs:label "double speed", "Double vitesse"@fr; rdf:value 2];
+    lv2:default 0;
+    lv2:minimum 0;
+    lv2:maximum 2;
+    lv2pg:group ramp_lv2:G106_SQ;
 ].
 
 ramp_lv2:G102_RP
@@ -307,4 +360,10 @@ ramp_lv2:G104_GS
     lv2:name "Global Shape",
         "Forme Globale"@fr;
     lv2:symbol "global_shape" .
+
+ramp_lv2:G106_SQ
+    a lv2pg:InputGroup;
+    lv2:name "Sequence",
+        "Sequence"@fr;
+    lv2:symbol "sequence" .
 
