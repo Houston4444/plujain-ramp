@@ -41,8 +41,8 @@ The midi output of this master instance has to be connected to all midi inputs o
 The master instance should be in "always active" or "Start with threshold" mode, the slaves instances in "Midi in Slave".
 Tip: if you want to apply this effect to distorded or high reverb effects, but you want a reactiv "Start with threshold" mode,you can simply connect the instrument source to the audio input of the master instance and not connect its audio output,then set one slave instance to "Midi in slave/Stop is bypass" mode.
 """,
-"""La meilleure méthode pour synchroniser plusieurs instances de Plujain Ramp Live est d'utiliser une instance comme maître et toutes les autres comme esclaves. Connectez la sortie midi de l'instance maître à l'entrée midi de chaque esclave, réglez l'instance maître sur le mode "Always Active" ou "Start with Threshold" et les instances esclaves sur le mode "Midi In Slave".
-Astuce: Si vous voulez appliquer l'effet à un son passé dans une distortion ou une grosse reverberation mais que vous voulez que le mode "Start With Threshold" soit bien réactif, connectez directement la source de l'instrument sur l'entrée audio de l'instance maître sans connecter sa sortie, puis réglez une instance esclave sur le mode "Midi In Slave/Stop is Bypass"."""@fr;
+"""La meilleure méthode pour synchroniser plusieurs instances de Plujain Ramp Live est d'utiliser une instance comme maître et toutes les autres comme esclaves. Connectez la sortie MIDI de l'instance maître à l'entrée midi de chaque esclave, réglez l'instance maître sur le mode "Always Active" ou "Start with Threshold" et les instances esclaves sur le mode "Midi In Slave".
+Astuce : si vous voulez appliquer l'effet à un son passé dans une distortion ou une grosse réverbération mais que vous voulez que le mode "Start With Threshold" soit bien réactif, connectez directement la source de l'instrument sur l'entrée audio de l'instance maître sans connecter sa sortie, puis réglez une instance esclave sur le mode "Midi In Slave/Stop is Bypass"."""@fr;
 
 lv2:port
 [
@@ -109,7 +109,7 @@ lv2:port
     lv2:index 6;
     lv2:symbol "enter_treshold";
     lv2:name "Enter Threshold" ,
-        "Seuil d'Entrée"@fr ;
+        "Seuil d'entrée"@fr ;
     units:unit units:db ;
     lv2:default -40;
     lv2:minimum -80;
@@ -120,7 +120,7 @@ lv2:port
     lv2:index 7;
     lv2:symbol "leave_treshold";
     lv2:name "Leave Threshold",
-        "Seuil de Sortie"@fr ;
+        "Seuil de sortie"@fr ;
     units:unit units:db ;
     lv2:default -65;
     lv2:minimum -80;
@@ -142,7 +142,7 @@ lv2:port
     lv2:index 9;
     lv2:symbol "pre_start_units";
     lv2:name "Pre Start Units",
-        "Unités du Pré-démarrage"@fr ;
+        "Unités du pré-démarrage"@fr ;
     lv2:portProperty lv2:integer;
     lv2:portProperty lv2:enumeration ;
         lv2:scalePoint [rdfs:label "beat"; rdf:value 1];
@@ -170,7 +170,7 @@ lv2:port
     lv2:index 11;
     lv2:symbol "temposync" ;
     lv2:name "Sync Tempo", 
-        "Tempo Synchronisé"@fr ;
+        "Tempo synchronisé"@fr ;
     lv2:default 1 ;
     lv2:minimum 0 ;
     lv2:maximum 1 ;
@@ -234,7 +234,7 @@ lv2:port
     lv2:index 15;
     lv2:symbol "max_duration";
     lv2:name "Max Duration",
-        "Durée Maximale"@fr ;
+        "Durée maximale"@fr ;
         lv2:scalePoint [rdfs:label "beat/32"; rdf:value 0.03125];
         lv2:scalePoint [rdfs:label "beat/16"; rdf:value 0.0625];
         lv2:scalePoint [rdfs:label "beat/8"; rdf:value 0.125];
@@ -253,7 +253,7 @@ lv2:port
     lv2:index 16;
     lv2:symbol "half_speed" ;
     lv2:name "Half Speed",
-        "Demi Vitesse"@fr ;
+        "Demi vitesse"@fr ;
     lv2:default 0 ;
     lv2:minimum 0 ;
     lv2:maximum 1 ;
@@ -265,7 +265,7 @@ lv2:port
     lv2:index 17;
     lv2:symbol "double_speed" ;
     lv2:name "Double Speed",
-        "Double Vitesse"@fr ;
+        "Double vitesse"@fr ;
     lv2:default 0 ;
     lv2:minimum 0 ;
     lv2:maximum 1 ;
@@ -321,7 +321,7 @@ lv2:port
     lv2:index 22;
     lv2:symbol "speed_effect_1";
     lv2:name "Speed Effect 1",
-        "Effet de Vitesse 1"@fr ;
+        "Effet de vitesse 1"@fr ;
     lv2:portProperty lv2:enumeration ;
         lv2:scalePoint [rdfs:label "Octave ++ reverse"; rdf:value -4];
         lv2:scalePoint [rdfs:label "Octave + Fifth reverse"; rdf:value -3.0];
@@ -346,7 +346,7 @@ lv2:port
     lv2:index 23;
     lv2:symbol "speed_effect_1_vol";
     lv2:name "Speed Effect 1 Volume",
-        "Effet de Vitesse 1 Volume"@fr ;
+        "Volume de l'effet de vitesse 1"@fr ;
     units:unit units:db ;
     lv2:scalePoint [rdfs:label "Mute"; rdf:value -80];
     lv2:default -80;
@@ -358,7 +358,7 @@ lv2:port
     lv2:index 24;
     lv2:symbol "speed_effect_2";
     lv2:name "Speed Effect 2",
-        "Effet de Vitesse 2"@fr;
+        "Effet de vitesse 2"@fr;
     lv2:portProperty lv2:enumeration ;
         lv2:scalePoint [rdfs:label "Octave ++ reverse"; rdf:value -4];
         lv2:scalePoint [rdfs:label "Octave + Fifth reverse"; rdf:value -3.0];
@@ -383,7 +383,7 @@ lv2:port
     lv2:index 25;
     lv2:symbol "speed_effect_2_vol";
     lv2:name "Speed Effect 2 Volume",
-        "Effet de Vitesse 2 Volume"@fr;
+        "Volume de l'effet de vitesse 2"@fr ;
     units:unit units:db ;
     lv2:scalePoint [rdfs:label "Mute"; rdf:value -80];
     lv2:default -80;
