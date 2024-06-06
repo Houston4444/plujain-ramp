@@ -46,20 +46,18 @@ void LiveRamp::send_midi_start_stop(bool start, uint32_t frame)
 {
     LV2_Atom midiatom;
     midiatom.type = uris.midi_MidiEvent;
-    midiatom.size = 3;
+    midiatom.size = 1;
     
-    uint8_t msg[3];
+    uint8_t msg[1];
     msg[0] = 0xfa;
     if (!start){
         msg[0] = 0xfc;
     }
-    msg[1] = 0;
-    msg[2] = 0;
     
     if (0 == lv2_atom_forge_frame_time (&forge, frame)) return;
 	if (0 == lv2_atom_forge_raw (&forge, &midiatom, sizeof (LV2_Atom))) return;
-	if (0 == lv2_atom_forge_raw (&forge, msg, 3)) return;
-    lv2_atom_forge_pad (&forge, sizeof (LV2_Atom) + 3);
+	if (0 == lv2_atom_forge_raw (&forge, msg, 1)) return;
+    lv2_atom_forge_pad (&forge, sizeof (LV2_Atom) + 1);
     
     if (instance_started_since > (2 * samplerate)){
         start_sent_after_start = true;
