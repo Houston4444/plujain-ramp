@@ -707,7 +707,8 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
 	
 	/* check midi input start/stop signal */
     if (active_state and plugin->is_live_ramp){
-        LV2_Atom_Event const* midi_ev = (LV2_Atom_Event const*)((uintptr_t)((&(plugin->midi_in)->body) + 1)); // lv2_atom_sequence_begin
+        LV2_Atom_Event const* midi_ev = (LV2_Atom_Event const*)((uintptr_t)((&(plugin->midi_in)->body) + 1)); 
+        // lv2_atom_sequence_begin
         while( // !lv2_atom_sequence_is_end
             (const uint8_t*)midi_ev < ((const uint8_t*) &(plugin->midi_in)->body + (plugin->midi_in)->atom.size)
             ){
@@ -717,6 +718,7 @@ void Ramp::run(LV2_Handle instance, uint32_t n_samples)
                 if (((const uint8_t*)(midi_ev+1))[0] == 0xfa){
                     start_sample = int(frame);
                 } else if (((const uint8_t*)(midi_ev+1))[0] == 0xfc){
+                    start_sample = -1;
                     if (plugin->current_mode == MODE_MIDI_BYPASS){
                         plugin->set_running_step(OUTING);
                     } else if (plugin->current_mode == MODE_ACTIVE){
